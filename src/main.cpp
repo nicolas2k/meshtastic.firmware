@@ -1622,7 +1622,7 @@ void loop()
 
     // SEISMIC RAK1904 DIFFÉRENTIELLE 250ms
     static uint32_t lastSeismic = 0;
-    static float tolerance = 0.25; // 0.5g/frac
+    static float tolerance = 0.15; // 0.15g/frac
     static float x_prev = 0, y_prev = 0, z_prev = 0;
 
     if (millis() - lastSeismic > 100) {  // ✅ 250ms faible conso
