@@ -1620,32 +1620,34 @@ void loop()
 
     runASAP = false;
 
-    // SEISMIC RAK1904 LIS3DH
+    // SEISMIC RAK1904 DIFFÉRENTIELLE 250ms
     static uint32_t lastSeismic = 0;
-    static bool seismicInit = false;
-    
-    if (millis() - lastSeismic > 500 && !seismicInit) {
-        Wire.begin();
-        Wire.beginTransmission(0x18); Wire.write(0x20); Wire.write(0x57); Wire.endTransmission();
-        Wire.beginTransmission(0x18); Wire.write(0x23); Wire.write(0x88); Wire.endTransmission();
-        seismicInit = true;
-        lastSeismic = millis();
-    }
-    
-    if (millis() - lastSeismic > 500 && seismicInit) {
-        Wire.beginTransmission(0x18); Wire.write(0x28 | 0x80); Wire.endTransmission(false); // Multiple read
+    static float x_prev = 0, y_prev = 0, z_prev = 0;
+
+    if (millis() - lastSeismic > 250) {  // ✅ 250ms faible conso
+        Wire.beginTransmission(0x18); Wire.write(0x28 | 0x80); Wire.endTransmission(false);
         Wire.requestFrom(0x18, 6);
-        int16_t x = (int16_t)(Wire.read() | (Wire.read() << 8));
-        int16_t y = (int16_t)(Wire.read() | (Wire.read() << 8));
-        int16_t z = (int16_t)(Wire.read() | (Wire.read() << 8));
+        float x = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
+        float y = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
+        float z = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
+        
+        // ✅ DIFFÉRENTIELLES (vitesse g/s)
+        float dx = (x - x_prev) / 0.25f;  // Δg / 0.25s = g/s
+        float dy = (y - y_prev) / 0.25f;
+        float dz = (z - z_prev) / 0.25f;
+        
+        // ✅ ABSOLUES + DIFFÉRENTIELLES
         char msg[64]; 
-        snprintf(msg, sizeof(msg), "SEISMIC:%.3f:%.3f:%.3f", x/16384.0f, y/16384.0f, z/16384.0f);
+        snprintf(msg, sizeof(msg), "SEISMIC:%.3f:%.3f:%.3f|%.1f:%.1f:%.1f\n", 
+                                            x, y, z, dx, dy, dz);  // Format: absolu|diff
         // service->sendText(msg); // ✅ MeshService::sendText()
         printf("%s", msg);
         LOG_INFO("%s", msg);
+        
+        // Stockage pour prochaine itération
+        x_prev = x; y_prev = y; z_prev = z;
         lastSeismic = millis();
     }
-    
     
 #ifdef ARCH_ESP32
     esp32Loop();
