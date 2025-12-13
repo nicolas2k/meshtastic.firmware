@@ -176,9 +176,13 @@ SPIClass SPI1(HSPI);
 // #ifdef RAK4631
 // modules.add(new SeismicModule());
 // #endif
-#ifdef RAK4631
-    modules->add(&seismicModule);
-#endif
+// #ifdef RAK4631
+//     modules->add(&seismicModule);
+// #endif
+
+// SeismicModule *seismic = new SeismicModule();
+// if (seismic) scheduler->addTask(seismic);
+
 
 using namespace concurrency;
 

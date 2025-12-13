@@ -1,0 +1,48 @@
+#include "SeismicModule.h"
+#include "configuration.h"
+#include <Wire.h>
+
+SeismicModule::SeismicModule() : concurrency::OSThread(NULL) {}
+
+int32_t SeismicModule::runOnce() {
+    if (!initLIS3DH()) return 30000;
+    
+    int16_t x = read16(0x28);
+    int16_t y = read16(0x2A);
+    int16_t z = read16(0x2C);
+    
+    char msg[64];
+    snprintf(msg, sizeof(msg), "SEISMIC:%.3f,%.3f,%.3f", x/16384.0f, y/16384.0f, z/16384.0f);
+    
+    // service.sendText(msg);  // ✅ Fonctionne CLI/Python
+    
+    LOG_INFO("Seismic: %s\n", msg);
+    return 10000; // 10s
+}
+
+bool SeismicModule::initLIS3DH() {
+    static bool init = false;
+    if (init) return true;
+    
+    Wire.begin();
+    Wire.beginTransmission(0x19);
+    Wire.write(0x0F);
+    if (Wire.endTransmission() != 0) return false;
+    Wire.requestFrom(0x19, 1);
+    if (Wire.read() != 0x33) return false;
+    
+    write8(0x20, 0x57);
+    write8(0x23, 0x88);
+    init = true;
+    return true;
+}
+
+int16_t SeismicModule::read16(uint8_t reg) {
+    Wire.beginTransmission(0x19); Wire.write(reg); Wire.endTransmission(false);
+    Wire.requestFrom(0x19, 2);
+    return (int16_t)(Wire.read() | (Wire.read() << 8));
+}
+
+void SeismicModule::write8(uint8_t reg, uint8_t v) {
+    Wire.beginTransmission(0x19); Wire.write(reg); Wire.write(v); Wire.endTransmission();
+}
