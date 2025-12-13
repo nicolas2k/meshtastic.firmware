@@ -1622,9 +1622,10 @@ void loop()
 
     // SEISMIC RAK1904 DIFFÉRENTIELLE 250ms
     static uint32_t lastSeismic = 0;
+    static float tolerance = 0.25; // 0.5g/frac
     static float x_prev = 0, y_prev = 0, z_prev = 0;
 
-    if (millis() - lastSeismic > 250) {  // ✅ 250ms faible conso
+    if (millis() - lastSeismic > 100) {  // ✅ 250ms faible conso
         Wire.beginTransmission(0x18); Wire.write(0x28 | 0x80); Wire.endTransmission(false);
         Wire.requestFrom(0x18, 6);
         float x = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
@@ -1636,14 +1637,16 @@ void loop()
         float dy = (y - y_prev) / 0.25f;
         float dz = (z - z_prev) / 0.25f;
         
-        // ✅ ABSOLUES + DIFFÉRENTIELLES
-        char msg[64]; 
-        snprintf(msg, sizeof(msg), "SEISMIC:%.3f:%.3f:%.3f|%.1f:%.1f:%.1f\n", 
-                                            x, y, z, dx, dy, dz);  // Format: absolu|diff
-        // service->sendText(msg); // ✅ MeshService::sendText()
-        printf("%s", msg);
-        LOG_INFO("%s", msg);
-        
+        if (dx >= tolerance or dy >= tolerance or dz >= tolerance) {
+            // ✅ ABSOLUES + DIFFÉRENTIELLES
+            char msg[64]; 
+            snprintf(msg, sizeof(msg), "[SEISMIC] %.3f:%.3f:%.3f|%.1f:%.1f:%.1f", 
+                                                x, y, z, dx, dy, dz);  // Format: absolu|diff
+            // service->sendText(msg); // ✅ MeshService::sendText()
+            printf("%s", msg);
+            LOG_INFO("%s", msg);
+        }
+
         // Stockage pour prochaine itération
         x_prev = x; y_prev = y; z_prev = z;
         lastSeismic = millis();
