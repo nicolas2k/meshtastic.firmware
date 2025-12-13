@@ -1,40 +1,25 @@
 #include "LIS3DHSensor.h"
-#include "../../../mesh/generated/meshtastic/telemetry.pb.h"
+#include "../../mesh/generated/meshtastic/telemetry.pb.h"
 #include "configuration.h"
 
-LIS3DHSensor::LIS3DHSensor() : TelemetrySensor("LIS3DH", meshtastic_TelemetrySensorType_SENSOR_UNSET) {}
+LIS3DHSensor::LIS3DHSensor() : TelemetrySensor(meshtastic_TelemetrySensorType_SENSOR_UNSET, "LIS3DH") {}
 
-bool LIS3DHSensor::init() {
-    Wire.begin();
-    Wire.beginTransmission(addr);
-    Wire.write(0x0F);
-    if (Wire.endTransmission() != 0) return false;
-    Wire.requestFrom(addr, 1);
-    if (Wire.read() != 0x33) return false;
+int32_t LIS3DHSensor::runOnce() {
+    if (!initSensor()) return -1;
     
-    write8(0x20, 0x57); // 100Hz XYZ
-    write8(0x23, 0x88); // ±16g
-    LOG_INFO("LIS3DH ready\n");
-    return true;
+    // ✅ DeviceMetrics STANDARD (sans accel)
+    meshtastic_Telemetry t = meshtastic_Telemetry_init_zero;
+    t.which_variant = meshtastic_Telemetry_device_metrics_tag;  // ✅ minuscule
+    
+    // Stockez X,Y,Z dans des champs libres (ex: voltage pour test)
+    float x = read16(0x28) / 16384.0f;
+    float y = read16(0x2A) / 16384.0f;
+    float z = read16(0x2C) / 16384.0f;
+    
+    LOG_INFO("LIS3DH Seismic: X=%.3fg Y=%.3fg Z=%.3fg\n", x, y, z);
+    
+    // TODO: Ajouter custom protobuf pour motion ou utiliser debug text
+    return 5000;
 }
 
-meshtastic_Telemetry *LIS3DHSensor::getReading(meshtastic_Telemetry *m) {
-    m->variant.device.accel_x_g = read16(0x28) / 16384.0f;  // ✅ device.accel_x_g
-    m->variant.device.accel_y_g = read16(0x2A) / 16384.0f;
-    m->variant.device.accel_z_g = read16(0x2C) / 16384.0f;
-    return m;
-}
-
-int16_t LIS3DHSensor::read16(uint8_t reg) {
-    Wire.beginTransmission(addr);
-    Wire.write(reg);
-    Wire.endTransmission(false);
-    Wire.requestFrom(addr, 2);
-    return (int16_t)(Wire.read() | (Wire.read() << 8));
-}
-
-void LIS3DHSensor::write8(uint8_t reg, uint8_t v) {
-    Wire.beginTransmission(addr);
-    Wire.write(reg); Wire.write(v);
-    Wire.endTransmission();
-}
+// initSensor() et read16/write8 IDENTIQUES (gardez-les)
