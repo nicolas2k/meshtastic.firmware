@@ -182,6 +182,20 @@ SPIClass SPI1(HSPI);
 
 // SeismicModule *seismic = new SeismicModule();
 // if (seismic) scheduler->addTask(seismic);
+// setupSeismic();  // ✅ Une seule ligne
+
+// === SEISMIC RAK1904 LIS3DH ===
+Wire.begin();
+scheduler.scheduleTask(0, 15000, []() {
+    Wire.beginTransmission(0x19); Wire.write(0x28); Wire.endTransmission(false); Wire.requestFrom(0x19, 2);
+    int16_t x = (int16_t)(Wire.read() | (Wire.read() << 8));
+    Wire.beginTransmission(0x19); Wire.write(0x2A); Wire.endTransmission(false); Wire.requestFrom(0x19, 2);
+    int16_t y = (int16_t)(Wire.read() | (Wire.read() << 8));
+    Wire.beginTransmission(0x19); Wire.write(0x2C); Wire.endTransmission(false); Wire.requestFrom(0x19, 2);
+    int16_t z = (int16_t)(Wire.read() | (Wire.read() << 8));
+    char msg[32]; snprintf(msg, sizeof(msg), "SEISMIC:%.2f:%.2f:%.2f", x/16384.0f, y/16384.0f, z/16384.0f);
+    service.sendText(msg);
+});
 
 
 using namespace concurrency;
