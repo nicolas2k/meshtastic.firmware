@@ -163,14 +163,21 @@ void setupNicheGraphics();
 SPIClass SPI1(HSPI);
 #endif
 
-#if defined(USE_LIS3DH_SENSOR)
-sensors.push_back(new LIS3DHSensor());
-#endif
+// #if defined(USE_LIS3DH_SENSOR)
+// sensors.push_back(new LIS3DHSensor());
+// #endif
 
-#ifdef USE_LIS3DH_SENSOR
-    if (sensors != nullptr) {
-        sensors->push_back(new LIS3DHSensor());
-    }
+// #ifdef USE_LIS3DH_SENSOR
+//     if (sensors != nullptr) {
+//         sensors->push_back(new LIS3DHSensor());
+//     }
+// #endif
+
+// #ifdef RAK4631
+// modules.add(new SeismicModule());
+// #endif
+#ifdef RAK4631
+    modules->add(&seismicModule);
 #endif
 
 using namespace concurrency;
