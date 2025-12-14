@@ -9,6 +9,9 @@
 
 class SeismicTelemetryModule : public ProtobufModule<meshtastic_Telemetry>
 {
+private:
+    bool m_hasLIS3DH;
+
 public:
     SeismicTelemetryModule();
 
