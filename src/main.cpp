@@ -175,13 +175,13 @@ SPIClass SPI1(HSPI);
 // #endif
 
 // #ifdef RAK4631
-// modules.add(new SeismicModule());
+// modules.add(new SeismicTelemetryModule());
 // #endif
 // #ifdef RAK4631
 //     modules->add(&seismicModule);
 // #endif
 
-// SeismicModule *seismic = new SeismicModule();
+// SeismicTelemetryModule *seismic = new SeismicTelemetryModule();
 // if (seismic) scheduler->addTask(seismic);
 // setupSeismic();  // ✅ Une seule ligne
 
@@ -322,9 +322,9 @@ void printInfo()
     LOG_INFO("S:B:%d,%s,%s,%s", HW_VENDOR, optstr(APP_VERSION), optstr(APP_ENV), optstr(APP_REPO));
 }
 
-#include "./modules/SeismicModule.h"
+#include "./modules/Telemetry/SeismicTelemetry.h"
 #if defined(USE_LIS3DH_SENSOR)
-static SeismicModule seismic(meshService);
+static SeismicTelemetryModule seismic(meshService);
 #endif
 
 #ifndef PIO_UNIT_TESTING
