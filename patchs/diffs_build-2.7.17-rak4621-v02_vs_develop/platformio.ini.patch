@@ -1,5 +1,5 @@
 diff --git a/platformio.ini b/platformio.ini
-index 25997e11d..6d7315582 100644
+index 25997e11d..330be496d 100644
 --- a/platformio.ini
 +++ b/platformio.ini
 @@ -3,6 +3,8 @@
@@ -36,5 +36,5 @@ index 25997e11d..6d7315582 100644
 +    adafruit/Adafruit LIS3DH
 +build_flags = 
 +    -D RAK4631
-+    -D USE_LIS3DH_SENSOR
++    ; -D USE_LIS3DH_SENSOR
 +    -I variants/rak4631
