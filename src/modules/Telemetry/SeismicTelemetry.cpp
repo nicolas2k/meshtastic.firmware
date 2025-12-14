@@ -36,10 +36,13 @@ SeismicTelemetryModule::SeismicTelemetryModule()
       m_zPrev(0.0f),
       m_hasLIS3DH(false)
 {
+    LOG_DEBUG("SeismicTelemetry: LIS3DH module");
 }
 
 void SeismicTelemetryModule::begin()
 {
+    LOG_INFO("SeismicTelemetry: begin()");
+
 #if defined(USE_LIS3DH_SENSOR)
     // const uint8_t LIS3DH_ADDR = 0x18;
 
@@ -67,6 +70,8 @@ void SeismicTelemetryModule::begin()
 
 void SeismicTelemetryModule::handle()
 {
+    LOG_DEBUG("SeismicTelemetry: handle()");
+
 #if defined(USE_LIS3DH_SENSOR)
     if (!m_hasLIS3DH) return;
 
