@@ -516,6 +516,13 @@ message HostMetrics {
   optional string user_string = 9;
 }
 
+
+message TelemetryMotion {
+  float dx = 1;
+  float dy = 2;
+  float dz = 3;
+}
+
 /*
  * Types of Measurements the telemetry module is equipped to handle
  */
@@ -568,11 +575,6 @@ message Telemetry {
   }
 }
 
-message TelemetryMotion {
-  float dx = 1;
-  float dy = 2;
-  float dz = 3;
-}
 
 /*
  * Supported I2C Sensors for telemetry in Meshtastic

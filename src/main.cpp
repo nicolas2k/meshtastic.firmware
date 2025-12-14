@@ -322,9 +322,9 @@ void printInfo()
     LOG_INFO("S:B:%d,%s,%s,%s", HW_VENDOR, optstr(APP_VERSION), optstr(APP_ENV), optstr(APP_REPO));
 }
 
-#include "./modules/Telemetry/SeismicTelemetry.h"
+// #include "./modules/Telemetry/SeismicTelemetry.h"
 #if defined(USE_LIS3DH_SENSOR)
-static SeismicTelemetryModule seismic(meshService);
+// static SeismicTelemetryModule seismic(meshService);
 #endif
 
 #ifndef PIO_UNIT_TESTING
@@ -1537,7 +1537,7 @@ void setup()
     nodeDB->notifyObservers(true);
 
 #if defined(USE_LIS3DH_SENSOR)
-    seismic.begin();   // init spécifique au module sismique
+    // seismic.begin();   // init spécifique au module sismique
 #endif
 }
 
@@ -1631,15 +1631,15 @@ void loop()
     runASAP = false;
 
 #if defined(USE_LIS3DH_SENSOR)
-    if (!lis3dhInit) {
-    delay(100);
-    Wire.beginTransmission(LIS3DH_ADDR);
-    if (Wire.endTransmission() == 0) {
-        // Init LIS3DH ici: write CTRL_REG1, etc.
-        lis3dhInit = true;
-    }
-    }
-    seismic.handle();  // un seul appel vers le module
+    // if (!lis3dhInit) {
+    // delay(100);
+    // Wire.beginTransmission(LIS3DH_ADDR);
+    // if (Wire.endTransmission() == 0) {
+    //     // Init LIS3DH ici: write CTRL_REG1, etc.
+    //     lis3dhInit = true;
+    // }
+    // }
+    // seismic.handle();  // un seul appel vers le module
 #endif
 
     

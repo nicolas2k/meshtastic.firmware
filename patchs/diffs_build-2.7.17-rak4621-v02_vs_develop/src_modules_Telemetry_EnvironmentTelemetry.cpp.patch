@@ -1,0 +1,12 @@
+diff --git a/src/modules/Telemetry/EnvironmentTelemetry.cpp b/src/modules/Telemetry/EnvironmentTelemetry.cpp
+index 29e815092..0676de47e 100644
+--- a/src/modules/Telemetry/EnvironmentTelemetry.cpp
++++ b/src/modules/Telemetry/EnvironmentTelemetry.cpp
+@@ -19,6 +19,7 @@
+ #include "power.h"
+ #include "sleep.h"
+ #include "target_specific.h"
++#include "SeismicTelemetry.h"
+ #include <OLEDDisplay.h>
+ 
+ #if !MESHTASTIC_EXCLUDE_ENVIRONMENTAL_SENSOR_EXTERNAL
