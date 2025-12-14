@@ -322,9 +322,10 @@ void printInfo()
     LOG_INFO("S:B:%d,%s,%s,%s", HW_VENDOR, optstr(APP_VERSION), optstr(APP_ENV), optstr(APP_REPO));
 }
 
-// #include "./modules/Telemetry/SeismicTelemetry.h"
 #if defined(USE_LIS3DH_SENSOR)
+#include "./modules/Telemetry/SeismicTelemetry.h"
 // static SeismicTelemetryModule seismic(meshService);
+SeismicTelemetryModule *seismic = nullptr;
 #endif
 
 #ifndef PIO_UNIT_TESTING
@@ -991,11 +992,20 @@ void setup()
     }
 #endif
 #endif
-    service = new MeshService();
-    service->init();
-
-    // Now that the mesh service is created, create any modules
-    setupModules();
+        service = new MeshService();
+        service->init();
+    
+        // Now that the mesh service is created, create any modules
+        setupModules();
+    
+    #if defined(USE_LIS3DH_SENSOR)
+        if (!seismic) {
+            // SeismicTelemetryModule is abstract and cannot be instantiated here;
+            // instantiate a concrete implementation elsewhere (module factory) or
+            // implement the missing virtual methods. For now, leave as nullptr.
+            seismic = nullptr;
+        }
+    #endif
 
 #if !MESHTASTIC_EXCLUDE_I2C
     // Inform modules about I2C devices
@@ -1537,7 +1547,8 @@ void setup()
     nodeDB->notifyObservers(true);
 
 #if defined(USE_LIS3DH_SENSOR)
-    // seismic.begin();   // init spécifique au module sismique
+    // if (seismic) seismic->begin();   // init spécifique au module sismique
+    seismic->begin();   // init spécifique au module sismique
 #endif
 }
 
@@ -1630,6 +1641,40 @@ void loop()
 
     runASAP = false;
 
+#if defined(USE_LIS3DH_SENSOR2)
+    // SEISMIC RAK1904 DIFFÉRENTIELLE 250ms
+    static uint32_t lastSeismic = 0;
+    static float tolerance = 0.15; // 0.15g/frac
+    static float x_prev = 0, y_prev = 0, z_prev = 0;
+
+    if (millis() - lastSeismic > 100) {  // ✅ 250ms faible conso
+        Wire.beginTransmission(0x18); Wire.write(0x28 | 0x80); Wire.endTransmission(false);
+        Wire.requestFrom(0x18, 6);
+        float x = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
+        float y = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
+        float z = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
+        
+        // ✅ DIFFÉRENTIELLES (vitesse g/s)
+        float dx = (x - x_prev) / 0.25f;  // Δg / 0.25s = g/s
+        float dy = (y - y_prev) / 0.25f;
+        float dz = (z - z_prev) / 0.25f;
+        
+        if (dx >= tolerance or dy >= tolerance or dz >= tolerance) {
+            // ✅ ABSOLUES + DIFFÉRENTIELLES
+            char msg[64]; 
+            snprintf(msg, sizeof(msg), "[SEISMIC] %.3f:%.3f:%.3f|%.1f:%.1f:%.1f", 
+                                                x, y, z, dx, dy, dz);  // Format: absolu|diff
+            // service->sendText(msg); // ✅ MeshService::sendText()
+            printf("%s", msg);
+            LOG_INFO("%s", msg);
+        }
+
+        // Stockage pour prochaine itération
+        x_prev = x; y_prev = y; z_prev = z;
+        lastSeismic = millis();
+    }
+#endif
+
 #if defined(USE_LIS3DH_SENSOR)
     // if (!lis3dhInit) {
     // delay(100);
@@ -1639,7 +1684,8 @@ void loop()
     //     lis3dhInit = true;
     // }
     // }
-    // seismic.handle();  // un seul appel vers le module
+    // if (seismic) seismic->handle();  // un seul appel vers le module
+    seismic->handle();  // un seul appel vers le module
 #endif
 
     

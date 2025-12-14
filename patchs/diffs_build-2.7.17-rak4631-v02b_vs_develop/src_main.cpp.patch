@@ -1,0 +1,94 @@
+diff --git a/src/main.cpp b/src/main.cpp
+index eb6dea327..58a6d8aa5 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -21,6 +21,7 @@
+ #include "detect/ScanI2C.h"
+ #include "error.h"
+ #include "power.h"
++#include "mesh/MeshService.h" 
+ 
+ #if !MESHTASTIC_EXCLUDE_I2C
+ #include "detect/ScanI2CConsumer.h"
+@@ -163,6 +164,31 @@ void setupNicheGraphics();
+ SPIClass SPI1(HSPI);
+ #endif
+ 
++// #if defined(USE_LIS3DH_SENSOR)
++// sensors.push_back(new LIS3DHSensor());
++// #endif
++
++// #ifdef USE_LIS3DH_SENSOR
++//     if (sensors != nullptr) {
++//         sensors->push_back(new LIS3DHSensor());
++//     }
++// #endif
++
++// #ifdef RAK4631
++// modules.add(new SeismicTelemetryModule());
++// #endif
++// #ifdef RAK4631
++//     modules->add(&seismicModule);
++// #endif
++
++// SeismicTelemetryModule *seismic = new SeismicTelemetryModule();
++// if (seismic) scheduler->addTask(seismic);
++// setupSeismic();  // ✅ Une seule ligne
++
++// === SEISMIC RAK1904 LIS3DH ===
++
++
++
+ using namespace concurrency;
+ 
+ volatile static const char slipstreamTZString[] = {USERPREFS_TZ_STRING};
+@@ -295,6 +321,12 @@ void printInfo()
+ {
+     LOG_INFO("S:B:%d,%s,%s,%s", HW_VENDOR, optstr(APP_VERSION), optstr(APP_ENV), optstr(APP_REPO));
+ }
++
++// #include "./modules/Telemetry/SeismicTelemetry.h"
++#if defined(USE_LIS3DH_SENSOR)
++// static SeismicTelemetryModule seismic(meshService);
++#endif
++
+ #ifndef PIO_UNIT_TESTING
+ void setup()
+ {
+@@ -1503,6 +1535,10 @@ void setup()
+ 
+     // We manually run this to update the NodeStatus
+     nodeDB->notifyObservers(true);
++
++#if defined(USE_LIS3DH_SENSOR)
++    // seismic.begin();   // init spécifique au module sismique
++#endif
+ }
+ 
+ #endif
+@@ -1588,10 +1624,25 @@ void scannerToSensorsMap(const std::unique_ptr<ScanI2CTwoWire> &i2cScanner, Scan
+ #endif
+ 
+ #ifndef PIO_UNIT_TESTING
++
+ void loop()
+ {
++
+     runASAP = false;
+ 
++#if defined(USE_LIS3DH_SENSOR)
++    // if (!lis3dhInit) {
++    // delay(100);
++    // Wire.beginTransmission(LIS3DH_ADDR);
++    // if (Wire.endTransmission() == 0) {
++    //     // Init LIS3DH ici: write CTRL_REG1, etc.
++    //     lis3dhInit = true;
++    // }
++    // }
++    // seismic.handle();  // un seul appel vers le module
++#endif
++
++    
+ #ifdef ARCH_ESP32
+     esp32Loop();
+ #endif

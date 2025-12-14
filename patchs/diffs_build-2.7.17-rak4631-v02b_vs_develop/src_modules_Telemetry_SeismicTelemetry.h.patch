@@ -1,0 +1,36 @@
+diff --git a/src/modules/Telemetry/SeismicTelemetry.h b/src/modules/Telemetry/SeismicTelemetry.h
+new file mode 100644
+index 000000000..8cae31acf
+--- /dev/null
++++ b/src/modules/Telemetry/SeismicTelemetry.h
+@@ -0,0 +1,30 @@
++// SeismicTelemetry.h
++#pragma once
++
++#include "ProtobufModule.h"
++#include "MeshService.h"
++#include "NodeDB.h"
++#include "../mesh/generated/meshtastic/mesh.pb.h"
++#include "../mesh/generated/meshtastic/telemetry.pb.h"
++
++class SeismicTelemetryModule : public ProtobufModule<meshtastic_Telemetry>
++{
++private:
++    bool m_hasLIS3DH;
++
++public:
++    SeismicTelemetryModule();
++
++    void begin();
++    void handle();
++
++private:
++    uint32_t m_lastSeismic;
++    float m_tolerance;
++    float m_xPrev;
++    float m_yPrev;
++    float m_zPrev;
++
++    void sendTelemetryMotion(float dx, float dy, float dz,
++                             float x, float y, float z);
++};

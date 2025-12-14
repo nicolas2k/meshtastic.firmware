@@ -14,6 +14,7 @@ private:
 
 public:
     SeismicTelemetryModule();
+    // meshService();
 
     void begin();
     void handle();

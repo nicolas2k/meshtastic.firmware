@@ -36,12 +36,12 @@ SeismicTelemetryModule::SeismicTelemetryModule()
       m_zPrev(0.0f),
       m_hasLIS3DH(false)
 {
-    LOG_DEBUG("SeismicTelemetry: LIS3DH module");
+    // LOG_DEBUG("[SEISMIC] SeismicTelemetry: LIS3DH module");
 }
 
 void SeismicTelemetryModule::begin()
 {
-    LOG_INFO("SeismicTelemetry: begin()");
+    LOG_INFO("[SEISMIC] SeismicTelemetry: begin()");
 
 #if defined(USE_LIS3DH_SENSOR)
     // const uint8_t LIS3DH_ADDR = 0x18;
@@ -70,7 +70,7 @@ void SeismicTelemetryModule::begin()
 
 void SeismicTelemetryModule::handle()
 {
-    LOG_DEBUG("SeismicTelemetry: handle()");
+    // LOG_DEBUG("[SEISMIC] SeismicTelemetry: handle()");
 
 #if defined(USE_LIS3DH_SENSOR)
     if (!m_hasLIS3DH) return;
@@ -79,7 +79,7 @@ void SeismicTelemetryModule::handle()
     const uint32_t now = millis();
 
     // Limite la fréquence (à adapter si besoin)
-    if (now - m_lastSeismic < 250) return;
+    if (now - m_lastSeismic < 100) return;
     m_lastSeismic = now;
 
     // Lecture des 6 registres XYZ (0x28..0x2D)

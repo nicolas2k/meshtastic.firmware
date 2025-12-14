@@ -1,0 +1,12 @@
+diff --git a/src/configuration.h b/src/configuration.h
+index b4ab57053..8f61d014b 100644
+--- a/src/configuration.h
++++ b/src/configuration.h
+@@ -519,3 +519,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+ #include "DebugConfiguration.h"
+ #include "RF95Configuration.h"
++
++#ifndef USERPREFS_TZ_STRING
++#define USERPREFS_TZ_STRING "tzplaceholder"
++#endif
