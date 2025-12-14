@@ -1631,6 +1631,14 @@ void loop()
     runASAP = false;
 
 #if defined(USE_LIS3DH_SENSOR)
+    if (!lis3dhInit) {
+    delay(100);
+    Wire.beginTransmission(LIS3DH_ADDR);
+    if (Wire.endTransmission() == 0) {
+        // Init LIS3DH ici: write CTRL_REG1, etc.
+        lis3dhInit = true;
+    }
+    }
     seismic.handle();  // un seul appel vers le module
 #endif
 

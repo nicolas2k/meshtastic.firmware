@@ -1,28 +1,27 @@
 // SeismicTelemetry.h
 #pragma once
 
-#include "MeshService.h"
 #include "ProtobufModule.h"
+#include "MeshService.h"
 #include "NodeDB.h"
-#include "../mesh/generated/meshtastic/mesh.pb.h"      // MeshPacket, Data, Telemetry...
-#include "../mesh/generated/meshtastic/telemetry.pb.h"  // si Telemetry/Motion sont dans un proto séparé
+#include "../mesh/generated/meshtastic/mesh.pb.h"
+#include "../mesh/generated/meshtastic/telemetry.pb.h"
 
 class SeismicTelemetryModule : public ProtobufModule<meshtastic_Telemetry>
 {
-    public:
-        SeismicTelemetryModule(MeshService &service);
+public:
+    SeismicTelemetryModule();
 
-        void begin();
-        void handle();
+    void begin();
+    void handle();
 
-    private:
-        MeshService &m_service;
-        uint32_t m_lastSeismic;
-        float m_tolerance;
-        float m_xPrev;
-        float m_yPrev;
-        float m_zPrev;
+private:
+    uint32_t m_lastSeismic;
+    float m_tolerance;
+    float m_xPrev;
+    float m_yPrev;
+    float m_zPrev;
 
-        void sendTelemetryMotion(float dx, float dy, float dz,
-                                float x, float y, float z);
+    void sendTelemetryMotion(float dx, float dy, float dz,
+                             float x, float y, float z);
 };

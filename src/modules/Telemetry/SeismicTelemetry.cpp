@@ -11,7 +11,6 @@
 #include "NodeDB.h"
 #include "PowerFSM.h"
 #include "PowerTelemetry.h"
-// #include "RTC.h"
 #include "Router.h"
 #include "graphics/SharedUIDisplay.h"
 #include "main.h"
@@ -27,14 +26,13 @@
 // static constexpr uint8_t LIS3DH_ADDR = 0x18;
 
 SeismicTelemetryModule::SeismicTelemetryModule()
-    : m_service(service),
+    : ProtobufModule("SeismicTelemetryModule", meshtastic_PortNum_TELEMETRY_APP),
       m_lastSeismic(0),
       m_tolerance(0.15f),
       m_xPrev(0.0f),
       m_yPrev(0.0f),
       m_zPrev(0.0f)
-{
-}
+{}
 
 void SeismicTelemetryModule::begin()
 {
@@ -85,31 +83,26 @@ void SeismicTelemetryModule::handle()
 // Fonction: SeismicTelemetryModule::sendTelemetryMotion
 
 void SeismicTelemetryModule::sendTelemetryMotion(float dx, float dy, float dz,
-                                        float x, float y, float z)
+                                                 float x, float y, float z)
 {
-    // 1) Préparer Telemetry comme pour l’environnement, mais avec la variante motion
     meshtastic_Telemetry m = meshtastic_Telemetry_init_zero;
-    m.which_variant = meshtastic_Telemetry_motion_tag;  // <== important
-    m.time = getTime();                                 // même getTime() que les autres modules
+    m.which_variant = meshtastic_Telemetry_motion_tag;
+    m.time = getTime();
 
-    // Remplir la variante motion
     m.variant.motion.dx = dx;
     m.variant.motion.dy = dy;
     m.variant.motion.dz = dz;
 
-    // 2) Créer le paquet comme le fait EnvironmentTelemetry (allocDataProtobuf)
-    meshtastic_MeshPacket *p = allocDataProtobuf(m);    // même utilitaire
+    meshtastic_MeshPacket *p = allocDataProtobuf(m);
     if (!p) return;
 
-    // 3) Paramètres d’envoi similaires
-    p->to = NODENUM_BROADCAST;         // ou un dest précis si tu veux
+    p->to = NODENUM_BROADCAST;
     p->decoded.want_response = false;
     p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
 
-    // 4) Envoyer sur le mesh (pas au téléphone ici)
+    // 'service' vient de ProtobufModule<meshtastic_Telemetry>, comme dans EnvironmentTelemetryModule
     service->sendToMesh(p, RX_SRC_LOCAL, true);
 
-    // 5) Logs texte pour debug (comme ton code initial)
     char msg[64];
     snprintf(msg, sizeof(msg),
              "[SEISMIC] %.3f:%.3f:%.3f|%.1f:%.1f:%.1f",

@@ -402,6 +402,12 @@ typedef struct _meshtastic_HostMetrics {
     char user_string[200];
 } meshtastic_HostMetrics;
 
+typedef struct _meshtastic_TelemetryMotion {
+    float dx;
+    float dy;
+    float dz;
+} meshtastic_TelemetryMotion;
+
 /* Types of Measurements the telemetry module is equipped to handle */
 typedef struct _meshtastic_Telemetry {
     /* Seconds since 1970 - or 0 for unknown/unset */
@@ -422,6 +428,8 @@ typedef struct _meshtastic_Telemetry {
         meshtastic_HealthMetrics health_metrics;
         /* Linux host metrics */
         meshtastic_HostMetrics host_metrics;
+        /* Seismic metrics */
+        meshtastic_TelemetryMotion motion;
     } variant;
 } meshtastic_Telemetry;
 
@@ -453,6 +461,7 @@ extern "C" {
 
 
 
+
 /* Initializer values for message structs */
 #define meshtastic_DeviceMetrics_init_default    {false, 0, false, 0, false, 0, false, 0, false, 0}
 #define meshtastic_EnvironmentMetrics_init_default {false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0, false, 0}
@@ -461,6 +470,7 @@ extern "C" {
 #define meshtastic_LocalStats_init_default       {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define meshtastic_HealthMetrics_init_default    {false, 0, false, 0, false, 0}
 #define meshtastic_HostMetrics_init_default      {0, 0, 0, false, 0, false, 0, 0, 0, 0, false, ""}
+#define meshtastic_TelemetryMotion_init_default  {0, 0, 0}
 #define meshtastic_Telemetry_init_default        {0, 0, {meshtastic_DeviceMetrics_init_default}}
 #define meshtastic_Nau7802Config_init_default    {0, 0}
 #define meshtastic_DeviceMetrics_init_zero       {false, 0, false, 0, false, 0, false, 0, false, 0}
@@ -470,6 +480,7 @@ extern "C" {
 #define meshtastic_LocalStats_init_zero          {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 #define meshtastic_HealthMetrics_init_zero       {false, 0, false, 0, false, 0}
 #define meshtastic_HostMetrics_init_zero         {0, 0, 0, false, 0, false, 0, 0, 0, 0, false, ""}
+#define meshtastic_TelemetryMotion_init_zero     {0, 0, 0}
 #define meshtastic_Telemetry_init_zero           {0, 0, {meshtastic_DeviceMetrics_init_zero}}
 #define meshtastic_Nau7802Config_init_zero       {0, 0}
 
@@ -568,6 +579,9 @@ extern "C" {
 #define meshtastic_HostMetrics_load5_tag         7
 #define meshtastic_HostMetrics_load15_tag        8
 #define meshtastic_HostMetrics_user_string_tag   9
+#define meshtastic_TelemetryMotion_dx_tag        1
+#define meshtastic_TelemetryMotion_dy_tag        2
+#define meshtastic_TelemetryMotion_dz_tag        3
 #define meshtastic_Telemetry_time_tag            1
 #define meshtastic_Telemetry_device_metrics_tag  2
 #define meshtastic_Telemetry_environment_metrics_tag 3
@@ -576,6 +590,7 @@ extern "C" {
 #define meshtastic_Telemetry_local_stats_tag     6
 #define meshtastic_Telemetry_health_metrics_tag  7
 #define meshtastic_Telemetry_host_metrics_tag    8
+#define meshtastic_Telemetry_motion_tag          9
 #define meshtastic_Nau7802Config_zeroOffset_tag  1
 #define meshtastic_Nau7802Config_calibrationFactor_tag 2
 
@@ -702,6 +717,13 @@ X(a, STATIC,   OPTIONAL, STRING,   user_string,       9)
 #define meshtastic_HostMetrics_CALLBACK NULL
 #define meshtastic_HostMetrics_DEFAULT NULL
 
+#define meshtastic_TelemetryMotion_FIELDLIST(X, a) \
+X(a, STATIC,   SINGULAR, FLOAT,    dx,                1) \
+X(a, STATIC,   SINGULAR, FLOAT,    dy,                2) \
+X(a, STATIC,   SINGULAR, FLOAT,    dz,                3)
+#define meshtastic_TelemetryMotion_CALLBACK NULL
+#define meshtastic_TelemetryMotion_DEFAULT NULL
+
 #define meshtastic_Telemetry_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, FIXED32,  time,              1) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (variant,device_metrics,variant.device_metrics),   2) \
@@ -710,7 +732,8 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (variant,air_quality_metrics,variant.air_qual
 X(a, STATIC,   ONEOF,    MESSAGE,  (variant,power_metrics,variant.power_metrics),   5) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (variant,local_stats,variant.local_stats),   6) \
 X(a, STATIC,   ONEOF,    MESSAGE,  (variant,health_metrics,variant.health_metrics),   7) \
-X(a, STATIC,   ONEOF,    MESSAGE,  (variant,host_metrics,variant.host_metrics),   8)
+X(a, STATIC,   ONEOF,    MESSAGE,  (variant,host_metrics,variant.host_metrics),   8) \
+X(a, STATIC,   ONEOF,    MESSAGE,  (variant,motion,variant.motion),   9)
 #define meshtastic_Telemetry_CALLBACK NULL
 #define meshtastic_Telemetry_DEFAULT NULL
 #define meshtastic_Telemetry_variant_device_metrics_MSGTYPE meshtastic_DeviceMetrics
@@ -720,6 +743,7 @@ X(a, STATIC,   ONEOF,    MESSAGE,  (variant,host_metrics,variant.host_metrics), 
 #define meshtastic_Telemetry_variant_local_stats_MSGTYPE meshtastic_LocalStats
 #define meshtastic_Telemetry_variant_health_metrics_MSGTYPE meshtastic_HealthMetrics
 #define meshtastic_Telemetry_variant_host_metrics_MSGTYPE meshtastic_HostMetrics
+#define meshtastic_Telemetry_variant_motion_MSGTYPE meshtastic_TelemetryMotion
 
 #define meshtastic_Nau7802Config_FIELDLIST(X, a) \
 X(a, STATIC,   SINGULAR, INT32,    zeroOffset,        1) \
@@ -734,6 +758,7 @@ extern const pb_msgdesc_t meshtastic_AirQualityMetrics_msg;
 extern const pb_msgdesc_t meshtastic_LocalStats_msg;
 extern const pb_msgdesc_t meshtastic_HealthMetrics_msg;
 extern const pb_msgdesc_t meshtastic_HostMetrics_msg;
+extern const pb_msgdesc_t meshtastic_TelemetryMotion_msg;
 extern const pb_msgdesc_t meshtastic_Telemetry_msg;
 extern const pb_msgdesc_t meshtastic_Nau7802Config_msg;
 
@@ -745,6 +770,7 @@ extern const pb_msgdesc_t meshtastic_Nau7802Config_msg;
 #define meshtastic_LocalStats_fields &meshtastic_LocalStats_msg
 #define meshtastic_HealthMetrics_fields &meshtastic_HealthMetrics_msg
 #define meshtastic_HostMetrics_fields &meshtastic_HostMetrics_msg
+#define meshtastic_TelemetryMotion_fields &meshtastic_TelemetryMotion_msg
 #define meshtastic_Telemetry_fields &meshtastic_Telemetry_msg
 #define meshtastic_Nau7802Config_fields &meshtastic_Nau7802Config_msg
 
@@ -758,6 +784,7 @@ extern const pb_msgdesc_t meshtastic_Nau7802Config_msg;
 #define meshtastic_LocalStats_size               76
 #define meshtastic_Nau7802Config_size            16
 #define meshtastic_PowerMetrics_size             81
+#define meshtastic_TelemetryMotion_size          15
 #define meshtastic_Telemetry_size                272
 
 #ifdef __cplusplus
