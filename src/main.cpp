@@ -324,7 +324,7 @@ void printInfo()
 
 #include "./modules/SeismicModule.h"
 #if defined(USE_LIS3DH_SENSOR)
-static SeismicModule seismic(meshService);   // meshService déjà existant
+static SeismicModule seismic(meshService);
 #endif
 
 #ifndef PIO_UNIT_TESTING
@@ -1631,7 +1631,7 @@ void loop()
     runASAP = false;
 
 #if defined(USE_LIS3DH_SENSOR)
-    seismic.handle();  // un seul appel vers ton module
+    seismic.handle();  // un seul appel vers le module
 #endif
 
     
