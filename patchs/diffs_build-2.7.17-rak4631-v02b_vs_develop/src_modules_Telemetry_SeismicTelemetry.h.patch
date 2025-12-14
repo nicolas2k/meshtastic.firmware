@@ -1,9 +1,9 @@
 diff --git a/src/modules/Telemetry/SeismicTelemetry.h b/src/modules/Telemetry/SeismicTelemetry.h
 new file mode 100644
-index 000000000..8cae31acf
+index 000000000..d2b6fa30f
 --- /dev/null
 +++ b/src/modules/Telemetry/SeismicTelemetry.h
-@@ -0,0 +1,30 @@
+@@ -0,0 +1,31 @@
 +// SeismicTelemetry.h
 +#pragma once
 +
@@ -20,6 +20,7 @@ index 000000000..8cae31acf
 +
 +public:
 +    SeismicTelemetryModule();
++    // meshService();
 +
 +    void begin();
 +    void handle();
