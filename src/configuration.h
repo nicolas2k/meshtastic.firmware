@@ -519,3 +519,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "DebugConfiguration.h"
 #include "RF95Configuration.h"
+
+#ifndef USERPREFS_TZ_STRING
+#define USERPREFS_TZ_STRING "tzplaceholder"
+#endif
