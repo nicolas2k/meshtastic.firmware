@@ -1,21 +1,22 @@
 diff --git a/src/modules/Telemetry/SeismicTelemetry.cpp b/src/modules/Telemetry/SeismicTelemetry.cpp
 new file mode 100644
-index 000000000..afd711e76
+index 000000000..fa0e54964
 --- /dev/null
 +++ b/src/modules/Telemetry/SeismicTelemetry.cpp
-@@ -0,0 +1,235 @@
+@@ -0,0 +1,258 @@
 +// SeismicTelemetryModule.cpp
 +#include "configuration.h"
 +
 +#include "SeismicTelemetry.h"
 +
++// Fichiers Protobuf requis
 +#include "../mesh/generated/meshtastic/mesh.pb.h"      // MeshPacket, Data, Telemetry...
 +#include "../mesh/generated/meshtastic/telemetry.pb.h"  // si Telemetry/Motion sont dans un proto séparé
 +
 +// Inclusions standard Meshtastic
 +#include "Default.h"
 +#include "MeshService.h"
-+#include "NodeDB.h"
++#include "NodeDB.h" // Nécessaire pour les types NodeDB/Telemetry
 +#include "PowerFSM.h"
 +#include "PowerTelemetry.h"
 +#include "Router.h"
@@ -25,32 +26,37 @@ index 000000000..afd711e76
 +#include "sleep.h"
 +#include "target_specific.h"
 +#include "EnvironmentTelemetry.h"
++#include "Configuration.h" // Ajout de l'inclusion manquante pour getMyNodeNum si besoin, mais nous allons utiliser NodeDB::getNodeNum()
 +
 +#include <Wire.h> // Bus I2C
 +#include <RTC.h>
 +#include <cstdio>
 +#include <cmath> // Pour fabs()
 +
-+// static constexpr uint8_t LIS3DH_ADDR = 0x18;
++// *** DÉCLARATIONS GLOBALES ***
++extern meshtastic_MyNodeInfo &myNodeInfo; 
++extern meshtastic_DeviceState devicestate; 
++extern NodeDB *nodeDB; 
++// ***************************************
 +
 +// Facteur de conversion pour la plage ±2g en mode Haute Résolution (12 bits)
 +// 1365.0f LSB/g est la valeur standard.
-+static constexpr float SENSITIVITY_2G = 1365.0f; 
++static constexpr float SENSITIVITY_2G = 1365.0f;
 +// Intervalle de temps pour l'ODR 10 Hz
 +static constexpr float TIME_STEP = 0.100f; // 100 ms
 +
 +
 +SeismicTelemetryModule::SeismicTelemetryModule()
 +    : ProtobufModule("SeismicTelemetryModule",
-+                     meshtastic_PortNum_TELEMETRY_APP,
++                     meshtastic_PortNum_TELEMETRY_APP, // Utilisation du port Telemetry
 +                     &meshtastic_Telemetry_msg),
++      m_hasLIS3DH(false),
 +      m_lastSeismic(0),
-+      // Seuil abaissé pour le Jerk (g/s). 0.05 g/s est une bonne valeur de départ.
-+      m_tolerance(0.05f), 
++      // Seuil Jerk (g/s). 0.025 g/s est une priorité BACKGROUND pour la sismicité.
++      m_tolerance(0.025f),
 +      m_xPrev(0.0f),
 +      m_yPrev(0.0f),
-+      m_zPrev(0.0f),
-+      m_hasLIS3DH(false)
++      m_zPrev(0.0f)
 +{
 +    // LOG_DEBUG("[SEISMIC] SeismicTelemetry: LIS3DH module");
 +}
@@ -69,17 +75,17 @@ index 000000000..afd711e76
 +        LOG_INFO("SeismicTelemetry: LIS3DH detected at 0x%02X", LIS3DH_ADDR);
 +
 +        // --- Configuration I2C pour la Haute Sensibilité et l'Interruption ---
-+        
++
 +        // 1. Définir la Plage de mesure à +/- 2g (CTRL_REG4: 0x23)
 +        // 0x18 = ±2g (FS=00), Haute Résolution (HR=1)
 +        Wire.beginTransmission(LIS3DH_ADDR);
-+        Wire.write(0x23); Wire.write(0x18);                   
++        Wire.write(0x23); Wire.write(0x18);
 +        Wire.endTransmission(true);
 +
 +        // 2. Définir l'ODR à 10 Hz (CTRL_REG1: 0x20)
 +        // 0x27 = ODR 10Hz (0010), XYZ enable (111)
 +        Wire.beginTransmission(LIS3DH_ADDR);
-+        Wire.write(0x20); Wire.write(0x27);                   
++        Wire.write(0x20); Wire.write(0x27);
 +        Wire.endTransmission(true);
 +
 +        // 3. Définir le Seuil (Trigger) à 15 LSB (~0.015g), nécessaire pour les interruptions
@@ -90,13 +96,13 @@ index 000000000..afd711e76
 +        // 4. Configuration des axes pour l'Interruption 1 (INT1_CFG: 0x30)
 +        // 0x2A = Détection sur X, Y et Z ("OR" logique)
 +        Wire.beginTransmission(LIS3DH_ADDR);
-+        Wire.write(0x30); Wire.write(0x2A);                   
++        Wire.write(0x30); Wire.write(0x2A);
 +        Wire.endTransmission(true);
 +
 +        // 5. Acheminer l'interruption vers la broche INT1 (CTRL_REG3: 0x22)
 +        // 0x40 = Active la détection d'événement sur INT1
 +        Wire.beginTransmission(LIS3DH_ADDR);
-+        Wire.write(0x22); Wire.write(0x40);                   
++        Wire.write(0x22); Wire.write(0x40);
 +        Wire.endTransmission(true);
 +
 +        LOG_INFO("[SEISMIC] LIS3DH Configuré: ±2g, 10Hz, Seuil %f g/s.", m_tolerance);
@@ -123,13 +129,8 @@ index 000000000..afd711e76
 +    // --- Lecture des 6 registres XYZ ---
 +    Wire.beginTransmission(LIS3DH_ADDR);
 +    Wire.write(0x28 | 0x80); // OUT_X_L (0x28) + auto-increment (0x80)
-+    if (Wire.endTransmission(false) != 0) {
-+        return;
-+    }
-+
-+    if (Wire.requestFrom(LIS3DH_ADDR, (uint8_t)6) != 6) {
-+        return;
-+    }
++    if (Wire.endTransmission(false) != 0) { return; }
++    if (Wire.requestFrom(LIS3DH_ADDR, (uint8_t)6) != 6) { return; }
 +
 +    // Lecture et reconstruction int16_t
 +    int16_t rawX = Wire.read() | (Wire.read() << 8);
@@ -142,24 +143,46 @@ index 000000000..afd711e76
 +    float z = rawZ / SENSITIVITY_2G;
 +
 +    // Calcul du JERK (Taux de Changement d'Accélération) en g/s
-+    float dx = (x - m_xPrev) / TIME_STEP; 
++    float dx = (x - m_xPrev) / TIME_STEP;
 +    float dy = (y - m_yPrev) / TIME_STEP;
 +    float dz = (z - m_zPrev) / TIME_STEP;
 +
 +    // Test par rapport à la tolérance du Jerk (m_tolerance en g/s)
-+    if (fabs(dx) < m_tolerance && fabs(dy) < m_tolerance && fabs(dz) < m_tolerance) { 
++    if (fabs(dx) < m_tolerance && fabs(dy) < m_tolerance && fabs(dz) < m_tolerance) {
 +        m_xPrev = x;
 +        m_yPrev = y;
 +        m_zPrev = z;
-+        return; 
++        return;
 +    }
 +
 +    // Le seuil est dépassé : Envoi du message.
 +    sendTelemetryMotion(dx, dy, dz, x, y, z);
++
++    // *** CORRECTION DÉFINITIVE DE PERSISTANCE ***
++
++    // Déclaration de la structure Télémétrie (maintenant une seule fois)
++    meshtastic_Telemetry t = meshtastic_Telemetry_init_zero;
++    t.which_variant = meshtastic_Telemetry_motion_tag;
++    t.variant.motion.dx = dx;
++    t.variant.motion.dy = dy;
++    t.variant.motion.dz = dz;
++
++    // 1. Mise à jour de la base de données via NodeDB.
++    // Correction de l'erreur: 'service->node_num' n'existe pas. On utilise nodeDB->getNodeNum().
++    nodeDB->updateTelemetry(nodeDB->getNodeNum(), t); // Correction
 +    
++    // 2. Sauvegarder la base de données dans la flash.
++    // Correction de l'erreur: 'NodeDB' n'a pas de membre 'writeNodeDB'. On utilise saveToDisk().
++    nodeDB->saveToDisk(); // Correction
++    
++    // *** Suppression du bloc de persistance redondant (lignes 180 à 193) ***
++    // Ce bloc contenait la redéclaration de 't' et l'appel erroné 'nodeDB->updateTelemetry(t)'.
++    
++    // *************************************************************************
++
 +    char msg[64];
 +    snprintf(msg, sizeof(msg),
-+             "[SEISMIC TRIGGER] ABSOLU: %.3f:%.3f:%.3f | JERK (g/s): %.2f:%.2f:%.2f",
++             "[SEISMIC TRIGGER] ABSOLU: %.3f:%.3f:%.3f | JERK (g/s): %.3f:%.3f:%.3f",
 +             x, y, z, dx, dy, dz);
 +    LOG_INFO("%s", msg);
 +
@@ -173,13 +196,13 @@ index 000000000..afd711e76
 +    Wire.beginTransmission(LIS3DH_ADDR);
 +    Wire.write(0x31);                   // INT1_SRC (registre source de l'interruption)
 +    Wire.endTransmission(false);
-+    
++
 +    Wire.requestFrom(LIS3DH_ADDR, 1);
 +    // Le fait de lire l'octet réarme la broche INT1 pour la prochaine détection.
 +    if (Wire.available()) {
-+        Wire.read(); 
++        Wire.read();
 +    }
-+    
++
 +#endif
 +}
 +
@@ -190,6 +213,7 @@ index 000000000..afd711e76
 +{
 +    // *** DEBUT DE LA SECTION PROTOBUF ***
 +    meshtastic_Telemetry m = meshtastic_Telemetry_init_zero;
++    // Indique que le type de télémétrie est "motion"
 +    m.which_variant = meshtastic_Telemetry_motion_tag;
 +    m.time = getTime();
 +
@@ -197,27 +221,26 @@ index 000000000..afd711e76
 +    m.variant.motion.dx = dx;
 +    m.variant.motion.dy = dy;
 +    m.variant.motion.dz = dz;
-+    
++
 +    meshtastic_MeshPacket *p = allocDataProtobuf(m);
 +    if (!p) return;
 +
 +    p->to = NODENUM_BROADCAST;
 +    p->decoded.want_response = false;
-+    
++
 +    // CORRECTION: Remplacement de l'identifiant non défini par sa valeur entière (2)
 +    // 2 correspond à meshtastic_MeshPacket_Priority_LOW
-+    p->priority = meshtastic_MeshPacket_Priority_BACKGROUND; 
++    p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
 +
 +    service->sendToMesh(p, RX_SRC_LOCAL, true);
 +    // *** FIN DE LA SECTION PROTOBUF ***
 +}
 +
 +
-+
 +    // // SEISMIC RAK1904 LIS3DH
 +    // static uint32_t lastSeismic = 0;
 +    // static bool seismicInit = false;
-+    
++
 +    // if (millis() - lastSeismic > 500 && !seismicInit) {
 +    //     Wire.begin();
 +    //     Wire.beginTransmission(0x18); Wire.write(0x20); Wire.write(0x57); Wire.endTransmission();
@@ -225,14 +248,14 @@ index 000000000..afd711e76
 +    //     seismicInit = true;
 +    //     lastSeismic = millis();
 +    // }
-+    
++
 +    // if (millis() - lastSeismic > 500 && seismicInit) {
 +    //     Wire.beginTransmission(0x18); Wire.write(0x28 | 0x80); Wire.endTransmission(false); // Multiple read
 +    //     Wire.requestFrom(0x18, 6);
 +    //     int16_t x = (int16_t)(Wire.read() | (Wire.read() << 8));
 +    //     int16_t y = (int16_t)(Wire.read() | (Wire.read() << 8));
 +    //     int16_t z = (int16_t)(Wire.read() | (Wire.read() << 8));
-+    //     char msg[64]; 
++    //     char msg[64];
 +    //     snprintf(msg, sizeof(msg), "SEISMIC:%.3f:%.3f:%.3f", x/16384.0f, y/16384.0f, z/16384.0f);
 +    //     // service->sendText(msg); // ✅ MeshService::sendText()
 +    //     printf("%s", msg);

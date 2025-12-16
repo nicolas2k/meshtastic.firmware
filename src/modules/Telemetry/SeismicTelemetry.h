@@ -38,3 +38,31 @@ private:
     void sendTelemetryMotion(float dx, float dy, float dz,
                              float x, float y, float z);
 };
+
+
+
+    // // SEISMIC RAK1904 LIS3DH
+    // static uint32_t lastSeismic = 0;
+    // static bool seismicInit = false;
+
+    // if (millis() - lastSeismic > 500 && !seismicInit) {
+    //     Wire.begin();
+    //     Wire.beginTransmission(0x18); Wire.write(0x20); Wire.write(0x57); Wire.endTransmission();
+    //     Wire.beginTransmission(0x18); Wire.write(0x23); Wire.write(0x88); Wire.endTransmission();
+    //     seismicInit = true;
+    //     lastSeismic = millis();
+    // }
+
+    // if (millis() - lastSeismic > 500 && seismicInit) {
+    //     Wire.beginTransmission(0x18); Wire.write(0x28 | 0x80); Wire.endTransmission(false); // Multiple read
+    //     Wire.requestFrom(0x18, 6);
+    //     int16_t x = (int16_t)(Wire.read() | (Wire.read() << 8));
+    //     int16_t y = (int16_t)(Wire.read() | (Wire.read() << 8));
+    //     int16_t z = (int16_t)(Wire.read() | (Wire.read() << 8));
+    //     char msg[64];
+    //     snprintf(msg, sizeof(msg), "SEISMIC:%.3f:%.3f:%.3f", x/16384.0f, y/16384.0f, z/16384.0f);
+    //     // service->sendText(msg); // ✅ MeshService::sendText()
+    //     printf("%s", msg);
+    //     LOG_INFO("%s", msg);
+    //     lastSeismic = millis();
+    // }

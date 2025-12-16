@@ -1,0 +1,13 @@
+diff --git a/src/platform/nrf52/softdevice/nrf_sdm.h b/src/platform/nrf52/softdevice/nrf_sdm.h
+index 02bf135b4..22202c847 100644
+--- a/src/platform/nrf52/softdevice/nrf_sdm.h
++++ b/src/platform/nrf52/softdevice/nrf_sdm.h
+@@ -249,7 +249,7 @@ typedef struct {
+                                @note To avoid excessive clock drift, 0.5 degrees Celsius is the
+                                      maximum temperature change allowed in one calibration timer
+                                      interval. The interval should be selected to ensure this.
+-     
++
+                                   @note Must be 0 if source is not ::NRF_CLOCK_LF_SRC_RC.  */
+     uint8_t rc_temp_ctiv; /**<  Only for ::NRF_CLOCK_LF_SRC_RC: How often (in number of calibration
+                                 intervals) the RC oscillator shall be calibrated if the temperature

@@ -1,6 +1,6 @@
 diff --git a/src/modules/Telemetry/SeismicTelemetry.h b/src/modules/Telemetry/SeismicTelemetry.h
 new file mode 100644
-index 000000000..ee0234c23
+index 000000000..654e4b2d1
 --- /dev/null
 +++ b/src/modules/Telemetry/SeismicTelemetry.h
 @@ -0,0 +1,40 @@
@@ -30,13 +30,13 @@ index 000000000..ee0234c23
 +
 +private:
 +    // Période de temps de la dernière lecture
-+    uint32_t m_lastSeismic; 
-+    
++    uint32_t m_lastSeismic;
++
 +    // Seuil de détection pour le Jerk (en g/s)
-+    float m_tolerance; 
-+    
++    float m_tolerance;
++
 +    // Valeurs d'accélération (en g) lues au cycle précédent
-+    float m_xPrev; 
++    float m_xPrev;
 +    float m_yPrev;
 +    float m_zPrev;
 +

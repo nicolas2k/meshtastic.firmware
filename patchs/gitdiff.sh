@@ -20,7 +20,8 @@ SUBMODULE_TARGETS=(
 )
 
 # Filtre pour les fichiers du SUPER-PROJET (seront traités en PATCHS)
-SUPER_PROJECT_FILTER="platformio.ini src/"
+SUPER_PROJECT_FILTER="platformio.ini src/ "
+SUPER_PROJECT_FILTER="platformio.ini src/ meshTestic/ protobufs/"
 
 echo "=========================================================="
 echo "Préparation pour la branche : [$CURRENT_BRANCH]"

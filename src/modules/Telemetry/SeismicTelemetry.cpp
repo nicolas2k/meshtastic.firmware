@@ -10,7 +10,7 @@
 // Inclusions standard Meshtastic
 #include "Default.h"
 #include "MeshService.h"
-#include "NodeDB.h" // Nécessaire pour les types NodeDB/Telemetry
+#include "NodeDB.h"
 #include "PowerFSM.h"
 #include "PowerTelemetry.h"
 #include "Router.h"
@@ -20,7 +20,7 @@
 #include "sleep.h"
 #include "target_specific.h"
 #include "EnvironmentTelemetry.h"
-#include "Configuration.h" // Ajout de l'inclusion manquante pour getMyNodeNum si besoin, mais nous allons utiliser NodeDB::getNodeNum()
+#include "Configuration.h" 
 
 #include <Wire.h> // Bus I2C
 #include <RTC.h>
@@ -28,9 +28,12 @@
 #include <cmath> // Pour fabs()
 
 // *** DÉCLARATIONS GLOBALES ***
+
 extern meshtastic_MyNodeInfo &myNodeInfo; 
 extern meshtastic_DeviceState devicestate; 
 extern NodeDB *nodeDB; 
+extern MeshService *service; // Requis pour refreshLocalMeshNode()
+
 // ***************************************
 
 // Facteur de conversion pour la plage ±2g en mode Haute Résolution (12 bits)
@@ -150,35 +153,37 @@ void SeismicTelemetryModule::handle()
     }
 
     // Le seuil est dépassé : Envoi du message.
-    sendTelemetryMotion(dx, dy, dz, x, y, z);
-
-    // *** CORRECTION DÉFINITIVE DE PERSISTANCE ***
-
-    // Déclaration de la structure Télémétrie (maintenant une seule fois)
-    meshtastic_Telemetry t = meshtastic_Telemetry_init_zero;
-    t.which_variant = meshtastic_Telemetry_motion_tag;
-    t.variant.motion.dx = dx;
-    t.variant.motion.dy = dy;
-    t.variant.motion.dz = dz;
-
-    // 1. Mise à jour de la base de données via NodeDB.
-    // Correction de l'erreur: 'service->node_num' n'existe pas. On utilise nodeDB->getNodeNum().
-    nodeDB->updateTelemetry(nodeDB->getNodeNum(), t); // Correction
-    
-    // 2. Sauvegarder la base de données dans la flash.
-    // Correction de l'erreur: 'NodeDB' n'a pas de membre 'writeNodeDB'. On utilise saveToDisk().
-    nodeDB->saveToDisk(); // Correction
-    
-    // *** Suppression du bloc de persistance redondant (lignes 180 à 193) ***
-    // Ce bloc contenait la redéclaration de 't' et l'appel erroné 'nodeDB->updateTelemetry(t)'.
-    
-    // *************************************************************************
+    // sendTelemetryMotion(dx, dy, dz, x, y, z);
 
     char msg[64];
     snprintf(msg, sizeof(msg),
              "[SEISMIC TRIGGER] ABSOLU: %.3f:%.3f:%.3f | JERK (g/s): %.3f:%.3f:%.3f",
              x, y, z, dx, dy, dz);
     LOG_INFO("%s", msg);
+
+    // *** PROCESSUS D'ENREGISTREMENT ET DE DIFFUSION ***
+
+    // Déclaration et remplissage de la structure Télémétrie
+    meshtastic_Telemetry t = meshtastic_Telemetry_init_zero;
+    t.which_variant = meshtastic_Telemetry_motion_tag;
+    t.variant.motion.dx = dx;
+    t.variant.motion.dy = dy;
+    t.variant.motion.dz = dz;
+    t.time = getTime(); 
+
+    // 1. Mise à jour de la base de données (data en RAM du NodeDB).
+    nodeDB->updateTelemetry(nodeDB->getNodeNum(), t); 
+    
+    // 2. Sauvegarder la base de données sur disque (persistance).
+    nodeDB->saveToDisk(); 
+
+    // 3. MISE À JOUR DE LA STRUCTURE LOCALEMENT DIFFUSABLE (myNodeInfo).
+    // Ceci met à jour la copie en RAM que le timer périodique va diffuser.
+    service->refreshLocalMeshNode(); 
+    
+    // *** AUCUN APPEL D'ENVOI IMMÉDIAT POUR ÉVITER LES ERREURS ET LES PARASITES ***
+    // La diffusion sera assurée par le timer de myNodeInfo dans main.cpp (max 5 minutes).
+    // *************************************************************************
 
     // Stockage pour la prochaine itération
     m_xPrev = x;
@@ -229,30 +234,3 @@ void SeismicTelemetryModule::sendTelemetryMotion(float dx, float dy, float dz,
     service->sendToMesh(p, RX_SRC_LOCAL, true);
     // *** FIN DE LA SECTION PROTOBUF ***
 }
-
-
-    // // SEISMIC RAK1904 LIS3DH
-    // static uint32_t lastSeismic = 0;
-    // static bool seismicInit = false;
-
-    // if (millis() - lastSeismic > 500 && !seismicInit) {
-    //     Wire.begin();
-    //     Wire.beginTransmission(0x18); Wire.write(0x20); Wire.write(0x57); Wire.endTransmission();
-    //     Wire.beginTransmission(0x18); Wire.write(0x23); Wire.write(0x88); Wire.endTransmission();
-    //     seismicInit = true;
-    //     lastSeismic = millis();
-    // }
-
-    // if (millis() - lastSeismic > 500 && seismicInit) {
-    //     Wire.beginTransmission(0x18); Wire.write(0x28 | 0x80); Wire.endTransmission(false); // Multiple read
-    //     Wire.requestFrom(0x18, 6);
-    //     int16_t x = (int16_t)(Wire.read() | (Wire.read() << 8));
-    //     int16_t y = (int16_t)(Wire.read() | (Wire.read() << 8));
-    //     int16_t z = (int16_t)(Wire.read() | (Wire.read() << 8));
-    //     char msg[64];
-    //     snprintf(msg, sizeof(msg), "SEISMIC:%.3f:%.3f:%.3f", x/16384.0f, y/16384.0f, z/16384.0f);
-    //     // service->sendText(msg); // ✅ MeshService::sendText()
-    //     printf("%s", msg);
-    //     LOG_INFO("%s", msg);
-    //     lastSeismic = millis();
-    // }
