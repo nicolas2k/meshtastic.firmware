@@ -20,7 +20,7 @@
 #include "sleep.h"
 #include "target_specific.h"
 #include "EnvironmentTelemetry.h"
-#include "Configuration.h" 
+#include "Configuration.h"
 
 #include <Wire.h> // Bus I2C
 #include <RTC.h>
@@ -32,7 +32,9 @@
 extern meshtastic_MyNodeInfo &myNodeInfo; 
 extern meshtastic_DeviceState devicestate; 
 extern NodeDB *nodeDB; 
-extern MeshService *service; // Requis pour refreshLocalMeshNode()
+extern MeshService *service; // Requis pour refreshLocalMeshNode() et sendToMesh()
+// Déclaration du helper Protobuf qui est une fonction globale ou de MeshService (assumons global ici)
+extern meshtastic_MeshPacket *allocDataProtobuf(meshtastic_Telemetry &t);
 
 // ***************************************
 
@@ -112,6 +114,41 @@ void SeismicTelemetryModule::begin()
 }
 
 
+// Fonction d'envoi du paquet Telemetry Motion (conforme au proto Meshtastic)
+// Nous n'utilisons que dx, dy, dz pour le paquet Protobuf motion, x, y, z sont des informations de contexte.
+void SeismicTelemetryModule::sendTelemetryMotion(float dx, float dy, float dz,
+                                                 float x, float y, float z)
+{
+    // *** DEBUT DE LA SECTION PROTOBUF ***
+    meshtastic_Telemetry m = meshtastic_Telemetry_init_zero;
+    
+    m.which_variant = meshtastic_Telemetry_motion_tag;
+    m.time = getTime();
+
+    // On utilise dx, dy, dz pour envoyer le Jerk (g/s)
+    m.variant.motion.dx = dx;
+    m.variant.motion.dy = dy;
+    m.variant.motion.dz = dz;
+
+    // Utilisation de la fonction helper pour créer le MeshPacket
+    meshtastic_MeshPacket *p = allocDataProtobuf(m);
+    if (!p) {
+        // Correction de LOG_ERR en LOG_ERROR
+        LOG_ERROR("Erreur d'allocation de MeshPacket pour la télémétrie.");
+        return;
+    }
+
+    // Configuration des champs du MeshPacket
+    p->to = NODENUM_BROADCAST;
+    // La priorité est définie par l'énumérateur standard
+    p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
+
+    // Le champ decoded.want_response est géré par allocDataProtobuf
+    
+    service->sendToMesh(p, RX_SRC_LOCAL, true);
+    // *** FIN DE LA SECTION PROTOBUF ***
+}
+
 void SeismicTelemetryModule::handle()
 {
 #if defined(USE_LIS3DH_SENSOR)
@@ -152,9 +189,6 @@ void SeismicTelemetryModule::handle()
         return;
     }
 
-    // Le seuil est dépassé : Envoi du message.
-    // sendTelemetryMotion(dx, dy, dz, x, y, z);
-
     char msg[64];
     snprintf(msg, sizeof(msg),
              "[SEISMIC TRIGGER] ABSOLU: %.3f:%.3f:%.3f | JERK (g/s): %.3f:%.3f:%.3f",
@@ -162,29 +196,25 @@ void SeismicTelemetryModule::handle()
     LOG_INFO("%s", msg);
 
     // *** PROCESSUS D'ENREGISTREMENT ET DE DIFFUSION ***
+    // *** PROCESSUS D'ENREGISTREMENT ET DE DIFFUSION ***
 
-    // Déclaration et remplissage de la structure Télémétrie
+// 1. Envoi immédiat du paquet de télémétrie (Portnum 6)
+    sendTelemetryMotion(dx, dy, dz, x, y, z);
+
+    // 2. Mise à jour de la base de données locale (pour la persistance et le NodeInfo)
     meshtastic_Telemetry t = meshtastic_Telemetry_init_zero;
     t.which_variant = meshtastic_Telemetry_motion_tag;
     t.variant.motion.dx = dx;
     t.variant.motion.dy = dy;
     t.variant.motion.dz = dz;
     t.time = getTime(); 
-
-    // 1. Mise à jour de la base de données (data en RAM du NodeDB).
-    nodeDB->updateTelemetry(nodeDB->getNodeNum(), t); 
     
-    // 2. Sauvegarder la base de données sur disque (persistance).
+    nodeDB->updateTelemetry(nodeDB->getNodeNum(), t); 
     nodeDB->saveToDisk(); 
 
-    // 3. MISE À JOUR DE LA STRUCTURE LOCALEMENT DIFFUSABLE (myNodeInfo).
-    // Ceci met à jour la copie en RAM que le timer périodique va diffuser.
-    service->refreshLocalMeshNode(); 
-    
-    // *** AUCUN APPEL D'ENVOI IMMÉDIAT POUR ÉVITER LES ERREURS ET LES PARASITES ***
-    // La diffusion sera assurée par le timer de myNodeInfo dans main.cpp (max 5 minutes).
+    // 3. Mise à jour de la structure locale pour le timer (NodeInfo)
+    service->refreshLocalMeshNode();
     // *************************************************************************
-
     // Stockage pour la prochaine itération
     m_xPrev = x;
     m_yPrev = y;
