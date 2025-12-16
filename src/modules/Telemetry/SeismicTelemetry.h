@@ -1,12 +1,15 @@
 // SeismicTelemetry.h
 #pragma once
 
+#include "../mesh/generated/meshtastic/telemetry.pb.h"
+#include "../mesh/generated/meshtastic/mesh.pb.h"
+#include "NodeDB.h"
 #include "ProtobufModule.h"
 #include "MeshService.h"
-#include "NodeDB.h"
-#include "../mesh/generated/meshtastic/mesh.pb.h"
-#include "../mesh/generated/meshtastic/telemetry.pb.h"
+#include "configuration.h"
 
+// Adresse I2C typique du LIS3DH (RAK1904)
+// static constexpr uint8_t LIS3DH_ADDR = 0x18;
 class SeismicTelemetryModule : public ProtobufModule<meshtastic_Telemetry>
 {
 private:
@@ -20,12 +23,18 @@ public:
     void handle();
 
 private:
-    uint32_t m_lastSeismic;
-    float m_tolerance;
-    float m_xPrev;
+    // Période de temps de la dernière lecture
+    uint32_t m_lastSeismic; 
+    
+    // Seuil de détection pour le Jerk (en g/s)
+    float m_tolerance; 
+    
+    // Valeurs d'accélération (en g) lues au cycle précédent
+    float m_xPrev; 
     float m_yPrev;
     float m_zPrev;
 
+    // Fonction d'envoi du paquet Telemetry Motion (conforme au proto Meshtastic)
     void sendTelemetryMotion(float dx, float dy, float dz,
                              float x, float y, float z);
 };
