@@ -24,13 +24,13 @@ public:
 
 private:
     // Période de temps de la dernière lecture
-    uint32_t m_lastSeismic; 
-    
+    uint32_t m_lastSeismic;
+
     // Seuil de détection pour le Jerk (en g/s)
-    float m_tolerance; 
-    
+    float m_tolerance;
+
     // Valeurs d'accélération (en g) lues au cycle précédent
-    float m_xPrev; 
+    float m_xPrev;
     float m_yPrev;
     float m_zPrev;
 

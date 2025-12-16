@@ -21,7 +21,7 @@
 #include "detect/ScanI2C.h"
 #include "error.h"
 #include "power.h"
-#include "mesh/MeshService.h" 
+#include "mesh/MeshService.h"
 
 #if !MESHTASTIC_EXCLUDE_I2C
 #include "detect/ScanI2CConsumer.h"
@@ -994,10 +994,10 @@ void setup()
 #endif
         service = new MeshService();
         service->init();
-    
+
         // Now that the mesh service is created, create any modules
         setupModules();
-    
+
     #if defined(USE_LIS3DH_SENSOR)
         if (!seismic) {
             // SeismicTelemetryModule is abstract and cannot be instantiated here;
@@ -1653,16 +1653,16 @@ void loop()
         float x = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
         float y = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
         float z = (int16_t)(Wire.read() | (Wire.read() << 8)) / 16384.0f;
-        
+
         // ✅ DIFFÉRENTIELLES (vitesse g/s)
         float dx = (x - x_prev) / 0.25f;  // Δg / 0.25s = g/s
         float dy = (y - y_prev) / 0.25f;
         float dz = (z - z_prev) / 0.25f;
-        
+
         if (dx >= tolerance or dy >= tolerance or dz >= tolerance) {
             // ✅ ABSOLUES + DIFFÉRENTIELLES
-            char msg[64]; 
-            snprintf(msg, sizeof(msg), "[SEISMIC] %.3f:%.3f:%.3f|%.1f:%.1f:%.1f", 
+            char msg[64];
+            snprintf(msg, sizeof(msg), "[SEISMIC] %.3f:%.3f:%.3f|%.1f:%.1f:%.1f",
                                                 x, y, z, dx, dy, dz);  // Format: absolu|diff
             // service->sendText(msg); // ✅ MeshService::sendText()
             printf("%s", msg);
@@ -1688,7 +1688,7 @@ void loop()
     seismic->handle();  // un seul appel vers le module
 #endif
 
-    
+
 #ifdef ARCH_ESP32
     esp32Loop();
 #endif

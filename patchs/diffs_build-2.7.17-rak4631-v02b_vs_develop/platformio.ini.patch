@@ -1,8 +1,8 @@
 diff --git a/platformio.ini b/platformio.ini
-index 25997e11d..d5bd7890c 100644
+index 25997e11d..55c1b3edd 100644
 --- a/platformio.ini
 +++ b/platformio.ini
-@@ -3,6 +3,8 @@
+@@ -3,12 +3,15 @@
  
  [platformio]
  default_envs = tbeam
@@ -11,48 +11,59 @@ index 25997e11d..d5bd7890c 100644
  
  extra_configs =
  	variants/*/*.ini
-@@ -23,7 +25,8 @@ extra_scripts =
+ 	variants/*/*/platformio.ini
+ 	variants/*/diy/*/platformio.ini
+ 	src/graphics/niche/InkHUD/PlatformioConfig.ini
++	; rakwireless/platformio.ini
+ 
+ description = Meshtastic
+ 
+@@ -23,6 +26,11 @@ extra_scripts =
  ; FIXME: fix lib/BluetoothOTA dependency back on src/ so we can remove -Isrc
  ; The Radiolib stuff will speed up building considerably. Exclud all the stuff we dont need.
  build_flags = -Wno-missing-field-initializers
--
++	-D RAK4631
 +	-D USE_LIS3DH_SENSOR
-+	; -D USE_LIS3DH_SENSOR2
++	-D USE_LIS3DH_SENSOR2
++	-I variants/rak4631
++	; -I src
+ 
  	-Wno-format
  	-Isrc -Isrc/mesh -Isrc/mesh/generated -Isrc/gps -Isrc/buzz -Wl,-Map,"${platformio.build_dir}"/output.map
- 	-DUSE_THREAD_NAMES
-@@ -218,3 +221,34 @@ lib_deps =
+@@ -218,3 +226,36 @@ lib_deps =
  	sensirion/Sensirion Core@0.7.2
  	# renovate: datasource=custom.pio depName=Sensirion I2C SCD4x packageName=sensirion/library/Sensirion I2C SCD4x
  	sensirion/Sensirion I2C SCD4x@1.1.0
 +
 +; env:RAK4631_rak4631
-+; [env:rak4630]
-+; platform = nordicnrf52
-+; board = rak4630 
-+; framework = arduino
-+; build_src_filter = ${env.build_src_filter}+<../rakwireless/variants/rak4630>
-+; build_flags = 
-+; 	-I rakwireless/variants/rak4630
-+;     -D RAK4631
-+;     -D USE_LIS3DH_SENSOR
-+;     ; -D USE_LIS3DH_SENSOR2
-+;     -I variants/rak4631
++[env:rak4630]
++platform = nordicnrf52
++board = rak4630 
++framework = arduino
++build_src_filter = ${env.build_src_filter}+<../rakwireless/variants/rak4630>
++build_flags = 
++	-I rakwireless/variants/rak4630
++	; -I src
++    -D RAK4631
++    -D USE_LIS3DH_SENSOR
++    -D USE_LIS3DH_SENSOR2
++    -I variants/rak4631
 +
-+; ; other build flags
-+; lib_deps = adafruit/Adafruit LIS3DH
-+; ; project library dependencies
-+; ; other required environment definitions
++; other build flags
++lib_deps = adafruit/Adafruit LIS3DH
++; project library dependencies
++; other required environment definitions
 +
-+; [env:rak4631]
-+; platform = nordicnrf52@^10.8.0
-+; board = rak4631
-+; framework = arduino
-+; lib_deps = 
-+;     adafruit/Adafruit LIS3DH
-+; build_flags = 
-+; 	-I rakwireless/variants/rak4630
-+;     -D RAK4631
-+;     -D USE_LIS3DH_SENSOR
-+;     ; -D USE_LIS3DH_SENSOR2
++[env:rak4631]
++platform = nordicnrf52@^10.8.0
++board = rak4631
++framework = arduino
++lib_deps = 
++    adafruit/Adafruit LIS3DH
++build_flags = 
++	-I rakwireless/variants/rak4630
++	; -I src
++    -D RAK4631
++    -D USE_LIS3DH_SENSOR
++    -D USE_LIS3DH_SENSOR2
 +;     -I variants/rak4631
