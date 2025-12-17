@@ -1,220 +1,117 @@
-// SeismicTelemetryModule.cpp
 #include "configuration.h"
-
 #include "SeismicTelemetry.h"
 
-// Fichiers Protobuf requis
 #include "../mesh/generated/meshtastic/mesh.pb.h"      
 #include "../mesh/generated/meshtastic/telemetry.pb.h"  
 
-// Inclusions standard Meshtastic
 #include "Default.h"
 #include "MeshService.h"
 #include "NodeDB.h"
-#include "PowerFSM.h"
-#include "PowerTelemetry.h"
 #include "Router.h"
-#include "graphics/SharedUIDisplay.h"
 #include "main.h"
-#include "power.h"
-#include "sleep.h"
-#include "target_specific.h"
-#include "EnvironmentTelemetry.h"
-#include "Configuration.h" 
-// #include "error.h"
+#include "RTC.h"
 
-#include <Wire.h> // Bus I2C
-#include <RTC.h>
-#include <cstdio>
-#include <cmath> // Pour fabs()
+#include <Wire.h>
+#include <cmath>
 
-// *** DÉCLARATIONS GLOBALES ***
-extern meshtastic_MyNodeInfo &myNodeInfo; 
-extern meshtastic_DeviceState devicestate; 
 extern NodeDB *nodeDB; 
 extern MeshService *service; 
-// ***************************************
+extern Router *router;
 
-// Facteur de conversion pour la plage ±2g en mode Haute Résolution (12 bits)
 static constexpr float SENSITIVITY_2G = 1365.0f;
-// Intervalle de temps pour l'ODR 10 Hz
-static constexpr float TIME_STEP = 0.100f; // 100 ms
+static constexpr float TIME_STEP = 0.100f; 
 
-// Déclaration de la fonction Protobuf Helper (doit être définie dans un autre fichier)
-// Nous laissons cette déclaration ici en dernier recours pour aider l'éditeur de liens.
-extern meshtastic_MeshPacket *allocDataProtobuf(meshtastic_Telemetry &t); 
+// CORRECTION 1 : Suppression du '&' car la macro meshtastic_Telemetry_fields l'inclut déjà
+SeismicTelemetryModule::SeismicTelemetryModule() 
+    : ProtobufModule<meshtastic_Telemetry>("seismic", meshtastic_PortNum_TELEMETRY_APP, meshtastic_Telemetry_fields), 
+      m_hasLIS3DH(false), m_lastSeismic(0), m_tolerance(0.1f), 
+      m_xPrev(0), m_yPrev(0), m_zPrev(0) 
+{}
 
-
-SeismicTelemetryModule::SeismicTelemetryModule()
-    : ProtobufModule("SeismicTelemetryModule",
-                     meshtastic_PortNum_TELEMETRY_APP, 
-                     &meshtastic_Telemetry_msg),
-      m_hasLIS3DH(false),
-      m_lastSeismic(0),
-      // Seuil Jerk (g/s)
-    //   m_tolerance(0.05f),
-    //   m_tolerance(0.025f),
-      m_tolerance(0.005f),
-      m_xPrev(0.0f),
-      m_yPrev(0.0f),
-      m_zPrev(0.0f)
-{
+void SeismicTelemetryModule::begin() {
+    Wire.begin();
+    Wire.beginTransmission(0x18);
+    Wire.write(0x0F); 
+    if (Wire.endTransmission() == 0) {
+        Wire.requestFrom(0x18, (uint8_t)1);
+        if (Wire.read() == 0x33) {
+            m_hasLIS3DH = true;
+            Wire.beginTransmission(0x18);
+            Wire.write(0x20); Wire.write(0x27); 
+            Wire.endTransmission();
+            Wire.beginTransmission(0x18);
+            Wire.write(0x23); Wire.write(0x08); 
+            Wire.endTransmission();
+            LOG_INFO("LIS3DH détecté.");
+        }
+    }
 }
 
-void SeismicTelemetryModule::begin()
-{
-    LOG_INFO("[Seismic] SeismicTelemetry: begin()");
+void SeismicTelemetryModule::handle() {
+    if (!m_hasLIS3DH || (millis() - m_lastSeismic < 100)) return;
+    m_lastSeismic = millis();
 
-#if defined(USE_LIS3DH_SENSOR)
-    Wire.beginTransmission(LIS3DH_ADDR);
-    uint8_t err = Wire.endTransmission(true);
+    Wire.beginTransmission(0x18);
+    Wire.write(0x28 | 0x80); 
+    if (Wire.endTransmission() != 0) return;
+    Wire.requestFrom(0x18, (uint8_t)6);
+    if (Wire.available() < 6) return;
 
-    if (err == 0) {
-        m_hasLIS3DH = true;
-        LOG_INFO("SeismicTelemetry: LIS3DH detected at 0x%02X", LIS3DH_ADDR);
+    int16_t xRaw = (int16_t)(Wire.read() | (Wire.read() << 8));
+    int16_t yRaw = (int16_t)(Wire.read() | (Wire.read() << 8));
+    int16_t zRaw = (int16_t)(Wire.read() | (Wire.read() << 8));
 
-        // Configuration I2C LIS3DH
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x23); Wire.write(0x18); Wire.endTransmission(true);
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x20); Wire.write(0x27); Wire.endTransmission(true);
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x32); Wire.write(0x0F); Wire.endTransmission(true);
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x30); Wire.write(0x2A); Wire.endTransmission(true);
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x22); Wire.write(0x40); Wire.endTransmission(true);
-
-        LOG_INFO("[Seismic] LIS3DH Configuré: ±2g, %fHz, Seuil %f g/s.", 1/TIME_STEP, m_tolerance);
-
-    } else {
-        m_hasLIS3DH = false;
-        LOG_WARN("SeismicTelemetry: LIS3DH NOT found at 0x%02X (err=%d)", LIS3DH_ADDR, err);
-    }
-#endif
-}
-
-
-// *** DÉFINITION UNIQUE DE LA FONCTION D'ENVOI ***
-void SeismicTelemetryModule::sendTelemetryMotion(float dx, float dy, float dz,
-                                                 float x, float y, float z)
-{
-    // *** DEBUT DE LA SECTION PROTOBUF ***
-    meshtastic_Telemetry m = meshtastic_Telemetry_init_zero;
-    
-    m.which_variant = meshtastic_Telemetry_motion_tag;
-    m.time = getTime();
-
-    // On utilise dx, dy, dz pour envoyer le Jerk (g/s)
-    m.variant.motion.dx = dx;
-    m.variant.motion.dy = dy;
-    m.variant.motion.dz = dz;
-
-    // Utilisation de la fonction helper pour créer le MeshPacket
-    meshtastic_MeshPacket *p = allocDataProtobuf(m);
-    if (!p) {
-        // Correction de LOG_ERR en LOG_ERROR
-        LOG_ERROR("Erreur d'allocation de MeshPacket pour la télémétrie.");
-        return;
-    } else {
-        LOG_WARN("[Seismic] shaked !");
-    }
-
-    // Configuration des champs du MeshPacket
-    p->to = NODENUM_BROADCAST;
-    // La priorité est définie par l'énumérateur standard
-    // p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
-    p->priority = meshtastic_MeshPacket_Priority_HIGH;
-    
-    // Log de l'envoi
-    ErrorCode res = router->send(p);
-    if (res == 0) { 
-        LOG_INFO("Seismic Packet submitted to Router successfully (Error: %d).", res);
-    } else {
-        LOG_WARN("Seismic Packet FAILED to submit to Router (Error: %d).", res);
-        // Si l'erreur est liée à l'AirUtil (qui ne retourne pas d'erreur, mais un WARN),
-        // le log WARN sera affiché APRES cette ligne.
-    }
-
-    // Le champ decoded.want_response est géré par allocDataProtobuf
-    service->sendToMesh(p, RX_SRC_LOCAL, true);
-    // *** FIN DE LA SECTION PROTOBUF ***
-}
-
-
-void SeismicTelemetryModule::handle()
-{
-#if defined(USE_LIS3DH_SENSOR)
-    if (!m_hasLIS3DH) return;
-
-    const uint32_t now = millis();
-
-    // Fréquence de lecture limitée à 100 ms (10 Hz)
-    if (now - m_lastSeismic < 100) return;
-    m_lastSeismic = now;
-
-    // --- Lecture et calculs Jerk ---
-    Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x28 | 0x80);
-    if (Wire.endTransmission(false) != 0) { return; }
-    if (Wire.requestFrom(LIS3DH_ADDR, (uint8_t)6) != 6) { return; }
-
-    int16_t rawX = Wire.read() | (Wire.read() << 8);
-    int16_t rawY = Wire.read() | (Wire.read() << 8);
-    int16_t rawZ = Wire.read() | (Wire.read() << 8);
-
-    float x = rawX / SENSITIVITY_2G;
-    float y = rawY / SENSITIVITY_2G;
-    float z = rawZ / SENSITIVITY_2G;
+    float x = (float)(xRaw >> 4) / SENSITIVITY_2G;
+    float y = (float)(yRaw >> 4) / SENSITIVITY_2G;
+    float z = (float)(zRaw >> 4) / SENSITIVITY_2G;
 
     float dx = (x - m_xPrev) / TIME_STEP;
     float dy = (y - m_yPrev) / TIME_STEP;
     float dz = (z - m_zPrev) / TIME_STEP;
 
-    // Test par rapport à la tolérance du Jerk
-    // if (fabs(dx) < m_tolerance && fabs(dy) < m_tolerance && fabs(dz) < m_tolerance) {
-    //     m_xPrev = x;
-    //     m_yPrev = y;
-    //     m_zPrev = z;
-    //     return;
-    // }
+    LOG_INFO("[SEISMIC] Trigger: dx=%.3f dy=%.3f dz=%.3f", dx, dy, dz);
 
-    // Le seuil est dépassé : Log pour l'utilisateur
-    char msg[64];
-    snprintf(msg, sizeof(msg),
-             "[SEISMIC TRIGGER] ABSOLU: %.3f:%.3f:%.3f | JERK (g/s): %.3f:%.3f:%.3f",
-             x, y, z, dx, dy, dz);
-    LOG_INFO("%s", msg);
-
-
-    // *** PROCESSUS D'ENREGISTREMENT ET DE DIFFUSION ***
-
-    // 1. Envoi immédiat du paquet de télémétrie (Portnum 6)
     sendTelemetryMotion(dx, dy, dz, x, y, z);
 
-    // 2. Mise à jour de la base de données locale (pour la persistance et le NodeInfo)
     meshtastic_Telemetry t = meshtastic_Telemetry_init_zero;
     t.which_variant = meshtastic_Telemetry_motion_tag;
     t.variant.motion.dx = dx;
     t.variant.motion.dy = dy;
     t.variant.motion.dz = dz;
-    t.time = getTime(); 
     
+    // CORRECTION 2 : Utilisation de RTC.getTimestamp() au lieu de getTime()
+    t.time = RTC.getTimestamp(); 
+
     nodeDB->updateTelemetry(nodeDB->getNodeNum(), t); 
-    nodeDB->saveToDisk(); 
 
-    // 3. Mise à jour de la structure locale pour le timer (NodeInfo)
-    service->refreshLocalMeshNode(); 
+    m_xPrev = x; m_yPrev = y; m_zPrev = z;
+}
+
+// CORRECTION 3 : Utilisation de allocDataPacket() au lieu de allocPacket()
+void SeismicTelemetryModule::sendTelemetryMotion(float dx, float dy, float dz, float x, float y, float z)
+{
+    meshtastic_Telemetry p = meshtastic_Telemetry_init_zero;
+    p.which_variant = meshtastic_Telemetry_motion_tag;
+    p.variant.motion.dx = dx;
+    p.variant.motion.dy = dy;
+    p.variant.motion.dz = dz;
+
+    meshtastic_MeshPacket *pkg = allocDataPacket();
+    pkg->decoded.portnum = meshtastic_PortNum_TELEMETRY_APP;
+    pkg->to = 0xFFFFFFFF; 
     
-    // *************************************************************************
-    // Stockage pour la prochaine itération
-    m_xPrev = x;
-    m_yPrev = y;
-    m_zPrev = z;
+    // CORRECTION 1 (bis) : Suppression du '&' devant la macro
+    size_t size = pb_encode_to_bytes(pkg->decoded.payload.bytes, sizeof(pkg->decoded.payload.bytes), meshtastic_Telemetry_fields, &p);
+    pkg->decoded.payload.size = size;
 
-    // --- Réarmement de l'Interruption (inchangé) ---
-    Wire.beginTransmission(LIS3DH_ADDR);
-    Wire.write(0x31);                   
-    Wire.endTransmission(false);
+    LOG_INFO("Seismic TX...");
+    
+    // Utilisation de la valeur 0 pour SUCCESS (Embedded_ErrorCode_SUCCESS)
+    ErrorCode res = router->send(pkg);
 
-    Wire.requestFrom(LIS3DH_ADDR, 1);
-    if (Wire.available()) {
-        Wire.read();
+    if (res == 0) { 
+        LOG_INFO("Packet sent successfully.");
+    } else {
+        LOG_WARN("Packet failed (Error: %d).", res);
     }
-
-#endif
 }
