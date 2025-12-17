@@ -166,12 +166,12 @@ void SeismicTelemetryModule::handle()
     float dz = (z - m_zPrev) / TIME_STEP;
 
     // Test par rapport à la tolérance du Jerk
-    // if (fabs(dx) < m_tolerance && fabs(dy) < m_tolerance && fabs(dz) < m_tolerance) {
-    //     m_xPrev = x;
-    //     m_yPrev = y;
-    //     m_zPrev = z;
-    //     return;
-    // }
+    if (fabs(dx) < m_tolerance && fabs(dy) < m_tolerance && fabs(dz) < m_tolerance) {
+        m_xPrev = x;
+        m_yPrev = y;
+        m_zPrev = z;
+        return;
+    }
 
     // Le seuil est dépassé : Log pour l'utilisateur
     char msg[64];
