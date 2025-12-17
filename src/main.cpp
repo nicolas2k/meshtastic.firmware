@@ -1662,7 +1662,7 @@ void loop()
         if (dx >= tolerance or dy >= tolerance or dz >= tolerance) {
             // ✅ ABSOLUES + DIFFÉRENTIELLES
             char msg[64]; 
-            snprintf(msg, sizeof(msg), "[SEISMIC] %.3f:%.3f:%.3f|%.1f:%.1f:%.1f", 
+            snprintf(msg, sizeof(msg), "[Seismic] %.3f:%.3f:%.3f|%.1f:%.1f:%.1f", 
                                                 x, y, z, dx, dy, dz);  // Format: absolu|diff
             // service->sendText(msg); // ✅ MeshService::sendText()
             printf("%s", msg);

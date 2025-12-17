@@ -21,6 +21,7 @@
 #include "target_specific.h"
 #include "EnvironmentTelemetry.h"
 #include "Configuration.h" 
+// #include "error.h"
 
 #include <Wire.h> // Bus I2C
 #include <RTC.h>
@@ -51,7 +52,9 @@ SeismicTelemetryModule::SeismicTelemetryModule()
       m_hasLIS3DH(false),
       m_lastSeismic(0),
       // Seuil Jerk (g/s)
-      m_tolerance(0.025f),
+    //   m_tolerance(0.05f),
+    //   m_tolerance(0.025f),
+      m_tolerance(0.005f),
       m_xPrev(0.0f),
       m_yPrev(0.0f),
       m_zPrev(0.0f)
@@ -60,7 +63,7 @@ SeismicTelemetryModule::SeismicTelemetryModule()
 
 void SeismicTelemetryModule::begin()
 {
-    LOG_INFO("[SEISMIC] SeismicTelemetry: begin()");
+    LOG_INFO("[Seismic] SeismicTelemetry: begin()");
 
 #if defined(USE_LIS3DH_SENSOR)
     Wire.beginTransmission(LIS3DH_ADDR);
@@ -77,7 +80,7 @@ void SeismicTelemetryModule::begin()
         Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x30); Wire.write(0x2A); Wire.endTransmission(true);
         Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x22); Wire.write(0x40); Wire.endTransmission(true);
 
-        LOG_INFO("[SEISMIC] LIS3DH Configuré: ±2g, 10Hz, Seuil %f g/s.", m_tolerance);
+        LOG_INFO("[Seismic] LIS3DH Configuré: ±2g, %fHz, Seuil %f g/s.", 1/TIME_STEP, m_tolerance);
 
     } else {
         m_hasLIS3DH = false;
@@ -108,13 +111,26 @@ void SeismicTelemetryModule::sendTelemetryMotion(float dx, float dy, float dz,
         // Correction de LOG_ERR en LOG_ERROR
         LOG_ERROR("Erreur d'allocation de MeshPacket pour la télémétrie.");
         return;
+    } else {
+        LOG_WARN("[Seismic] shaked !");
     }
 
     // Configuration des champs du MeshPacket
     p->to = NODENUM_BROADCAST;
     // La priorité est définie par l'énumérateur standard
-    p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
+    // p->priority = meshtastic_MeshPacket_Priority_BACKGROUND;
+    p->priority = meshtastic_MeshPacket_Priority_HIGH;
     
+    // Log de l'envoi
+    ErrorCode res = router->send(p);
+    if (res == 0) { 
+        LOG_INFO("Seismic Packet submitted to Router successfully (Error: %d).", res);
+    } else {
+        LOG_WARN("Seismic Packet FAILED to submit to Router (Error: %d).", res);
+        // Si l'erreur est liée à l'AirUtil (qui ne retourne pas d'erreur, mais un WARN),
+        // le log WARN sera affiché APRES cette ligne.
+    }
+
     // Le champ decoded.want_response est géré par allocDataProtobuf
     service->sendToMesh(p, RX_SRC_LOCAL, true);
     // *** FIN DE LA SECTION PROTOBUF ***
@@ -150,12 +166,12 @@ void SeismicTelemetryModule::handle()
     float dz = (z - m_zPrev) / TIME_STEP;
 
     // Test par rapport à la tolérance du Jerk
-    if (fabs(dx) < m_tolerance && fabs(dy) < m_tolerance && fabs(dz) < m_tolerance) {
-        m_xPrev = x;
-        m_yPrev = y;
-        m_zPrev = z;
-        return;
-    }
+    // if (fabs(dx) < m_tolerance && fabs(dy) < m_tolerance && fabs(dz) < m_tolerance) {
+    //     m_xPrev = x;
+    //     m_yPrev = y;
+    //     m_zPrev = z;
+    //     return;
+    // }
 
     // Le seuil est dépassé : Log pour l'utilisateur
     char msg[64];
