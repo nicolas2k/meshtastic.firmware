@@ -54,7 +54,8 @@ SeismicTelemetryModule::SeismicTelemetryModule()
       // Seuil Jerk (g/s)
     //   m_tolerance(0.05f),
     //   m_tolerance(0.025f),
-      m_tolerance(0.005f),
+    //   m_tolerance(0.005f),
+      m_tolerance(0.001f),
       m_xPrev(0.0f),
       m_yPrev(0.0f),
       m_zPrev(0.0f)
@@ -66,25 +67,49 @@ void SeismicTelemetryModule::begin()
     LOG_INFO("[Seismic] SeismicTelemetry: begin()");
 
 #if defined(USE_LIS3DH_SENSOR)
+    Wire.begin();
     Wire.beginTransmission(LIS3DH_ADDR);
+    Wire.write(0x0F); // WHO_AM_I
     uint8_t err = Wire.endTransmission(true);
 
     if (err == 0) {
-        m_hasLIS3DH = true;
         LOG_INFO("SeismicTelemetry: LIS3DH detected at 0x%02X", LIS3DH_ADDR);
-
+        
         // Configuration I2C LIS3DH
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x23); Wire.write(0x18); Wire.endTransmission(true);
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x20); Wire.write(0x27); Wire.endTransmission(true);
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x32); Wire.write(0x0F); Wire.endTransmission(true);
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x30); Wire.write(0x2A); Wire.endTransmission(true);
-        Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x22); Wire.write(0x40); Wire.endTransmission(true);
-
+        Wire.requestFrom(LIS3DH_ADDR, (uint8_t)1);
+        if (Wire.read() == 0x33) {
+            
+            // 1. CTRL_REG4 (0x23) : Full Scale ±2g (plus sensible), High Resolution ON
+            // Bits: BDU(0) | BLE(0) | FS(00) | HR(1) | ST(00) | SIM(0) => 0x08
+            // Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x23); Wire.write(0x18); Wire.endTransmission(true);
+            Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x23); Wire.write(0x08); Wire.endTransmission(true);
+            
+            // 2. CTRL_REG1 (0x20) : 10Hz, Power Normal, All Axes ON
+            // Bits: ODR(0010) | LPen(0) | Zen(1) | Yen(1) | Xen(1) => 0x27
+            // Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x20); Wire.write(0x27); Wire.endTransmission(true);
+            Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x20); Wire.write(0x27); Wire.endTransmission(true);
+            
+            // 3. INT1_THS (0x32) : Seuil de détection
+            // Valeur entre 0x01 (max sensibilité) et 0x7F. 0x02 = ~32mg
+            // Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x32); Wire.write(0x0F); Wire.endTransmission(true);
+            Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x32); Wire.write(0x02); Wire.endTransmission(true);
+            
+            // 4. INT1_CFG (0x30) : Configurer l'événement (OR de X High, Y High, Z High)
+            // Bits: AOI(0) | 6D(0) | ZHIE(1) | ZLIE(0) | YHIE(1) | YLIE(0) | XHIE(1) | XLIE(0) => 0x2A
+            // Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x30); Wire.write(0x2A); Wire.endTransmission(true);
+            Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x30); Wire.write(0x2A); Wire.endTransmission(true);
+            
+            // 5. CTRL_REG3 (0x22) : Mapper l'interruption IA1 sur la pin INT1
+            // Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x22); Wire.write(0x40); Wire.endTransmission(true);
+            Wire.beginTransmission(LIS3DH_ADDR); Wire.write(0x22); Wire.write(0x40); Wire.endTransmission(true);
+        }
+        
         LOG_INFO("[Seismic] LIS3DH Configuré: ±2g, %fHz, Seuil %f g/s.", 1/TIME_STEP, m_tolerance);
+        m_hasLIS3DH = true;
 
     } else {
-        m_hasLIS3DH = false;
         LOG_WARN("SeismicTelemetry: LIS3DH NOT found at 0x%02X (err=%d)", LIS3DH_ADDR, err);
+        m_hasLIS3DH = false;
     }
 #endif
 }
