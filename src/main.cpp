@@ -328,6 +328,12 @@ void printInfo()
 SeismicTelemetryModule *seismic = nullptr;
 #endif
 
+
+// #if defined(USE_LIS3DH_SENSOR)
+// // L'instance globale suffit, ProtobufModule gère l'enregistrement
+// SeismicTelemetryModule *seismicTelemetryModule = new SeismicTelemetryModule(); 
+// #endif
+
 #ifndef PIO_UNIT_TESTING
 void setup()
 {

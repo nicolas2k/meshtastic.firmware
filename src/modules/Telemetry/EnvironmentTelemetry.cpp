@@ -15,7 +15,6 @@
 #include "graphics/SharedUIDisplay.h"
 #include "graphics/images.h"
 #include "main.h"
-#include "modules/ExternalNotificationModule.h"
 #include "power.h"
 #include "sleep.h"
 #include "target_specific.h"
@@ -29,6 +28,9 @@
 #include "Sensor/RCWL9620Sensor.h"
 #include "Sensor/nullSensor.h"
 
+// Modules
+#include "modules/ExternalNotificationModule.h"
+#include "modules/Telemetry/SeismicTelemetry.h"
 namespace graphics
 {
 extern void drawCommonHeader(OLEDDisplay *display, int16_t x, int16_t y, const char *titleStr, bool force_no_invert,
@@ -293,6 +295,12 @@ int32_t EnvironmentTelemetryModule::runOnce()
     // moduleConfig.telemetry.environment_measurement_enabled = 1;
     // moduleConfig.telemetry.environment_screen_enabled = 1;
     // moduleConfig.telemetry.environment_update_interval = 15;
+
+    #if defined(USE_LIS3DH_SENSOR)
+    // L'instance globale suffit, ProtobufModule gère l'enregistrement
+    // SeismicTelemetryModule *seismicTelemetryModule = new SeismicTelemetryModule(); 
+    #endif
+
 
     if (!(moduleConfig.telemetry.environment_measurement_enabled || moduleConfig.telemetry.environment_screen_enabled ||
           ENVIRONMENTAL_TELEMETRY_MODULE_ENABLE)) {

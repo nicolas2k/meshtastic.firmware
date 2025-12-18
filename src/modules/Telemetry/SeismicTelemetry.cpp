@@ -3,29 +3,13 @@
 #include "configuration.h"
 #include "SeismicTelemetry.h"
 
-// Fichiers Protobuf requis
-// #include "../mesh/generated/meshtastic/mesh.pb.h"
-// #include "../mesh/generated/meshtastic/telemetry.pb.h"
-
 // Inclusions standard Meshtastic
-// #include "Default.h"
 #include "MeshService.h"
 #include "NodeDB.h"
-// #include "PowerFSM.h"
-// #include "PowerTelemetry.h"
 #include "Router.h"
-// #include "graphics/SharedUIDisplay.h"
-// #include "main.h"
-// #include "power.h"
-// #include "sleep.h"
-// #include "target_specific.h"
-// #include "EnvironmentTelemetry.h"
-// #include "error.h"
 
 #include <Wire.h> // Bus I2C
 #include <RTC.h>
-// #include <cstdio>
-// #include <cmath> // Pour fabs()
 
 // *** DÉCLARATIONS GLOBALES ***
 extern meshtastic_MyNodeInfo &myNodeInfo;
@@ -286,10 +270,3 @@ void SeismicTelemetryModule::readSensor() {
     curY = rawY / SENSITIVITY_2G;
     curZ = rawZ / SENSITIVITY_2G;
 }
-
-
-// #if defined(USE_LIS3DH_SENSOR)
-// // L'instance globale suffit, ProtobufModule gère l'enregistrement
-// SeismicTelemetryModule *seismicTelemetryModule = new SeismicTelemetryModule(); 
-// #endif
-
