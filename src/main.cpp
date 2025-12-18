@@ -323,9 +323,9 @@ void printInfo()
 }
 
 #if defined(USE_LIS3DH_SENSOR)
-#include "./modules/Telemetry/SeismicTelemetry.h"
+// #include "./modules/Telemetry/SeismicTelemetry.h"
 // static SeismicTelemetryModule seismic(meshService);
-SeismicTelemetryModule *seismic = nullptr;
+// SeismicTelemetryModule *seismic = nullptr;
 #endif
 
 #ifndef PIO_UNIT_TESTING
@@ -999,12 +999,12 @@ void setup()
         setupModules();
     
     #if defined(USE_LIS3DH_SENSOR)
-        if (!seismic) {
-            // SeismicTelemetryModule is abstract and cannot be instantiated here;
-            // instantiate a concrete implementation elsewhere (module factory) or
-            // implement the missing virtual methods. For now, leave as nullptr.
-            seismic = nullptr;
-        }
+        // if (!seismic) {
+        //     // SeismicTelemetryModule is abstract and cannot be instantiated here;
+        //     // instantiate a concrete implementation elsewhere (module factory) or
+        //     // implement the missing virtual methods. For now, leave as nullptr.
+        //     seismic = nullptr;
+        // }
     #endif
 
 #if !MESHTASTIC_EXCLUDE_I2C
@@ -1548,7 +1548,7 @@ void setup()
 
 #if defined(USE_LIS3DH_SENSOR)
     // if (seismic) seismic->begin();   // init spécifique au module sismique
-    seismic->begin();   // init spécifique au module sismique
+    // seismic->begin();   // init spécifique au module sismique
 #endif
 }
 
@@ -1685,7 +1685,7 @@ void loop()
     // }
     // }
     // if (seismic) seismic->handle();  // un seul appel vers le module
-    seismic->handle();  // un seul appel vers le module
+    // seismic->handle();  // un seul appel vers le module
 #endif
 
     

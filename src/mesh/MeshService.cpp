@@ -17,6 +17,7 @@
 #include "modules/NodeInfoModule.h"
 #include "modules/PositionModule.h"
 #include "modules/RoutingModule.h"
+// #include "modules/Telemetry/SeismicTelemetry.h"
 #include "power.h"
 #include <assert.h>
 #include <string>

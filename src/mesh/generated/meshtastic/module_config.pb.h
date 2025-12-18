@@ -338,6 +338,7 @@ typedef struct _meshtastic_ModuleConfig_TelemetryConfig {
     bool environment_display_fahrenheit;
     /* Enable/Disable the air quality metrics */
     bool air_quality_enabled;
+    bool seismic_enabled;
     /* Interval in seconds of how often we should try to send our
  air quality metrics to the mesh */
     uint32_t air_quality_interval;
