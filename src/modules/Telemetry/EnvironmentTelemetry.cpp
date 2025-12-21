@@ -298,7 +298,7 @@ int32_t EnvironmentTelemetryModule::runOnce()
 
     #if defined(USE_LIS3DH_SENSOR)
     // L'instance globale suffit, ProtobufModule gère l'enregistrement
-    // SeismicTelemetryModule *seismicTelemetryModule = new SeismicTelemetryModule(); 
+    // SeismicTelemetryModule *seismicTelemetryModule = new SeismicTelemetryModule();
     #endif
 
 
