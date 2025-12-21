@@ -11,14 +11,7 @@
 #include <Wire.h> // Bus I2C
 #include <RTC.h>
 
-// *** DÉCLARATIONS GLOBALES ***
-extern meshtastic_MyNodeInfo &myNodeInfo;
-extern meshtastic_DeviceState devicestate;
-extern NodeDB *nodeDB;
-extern MeshService *service;
-// ***************************************
-
-// static constexpr uint8_t LIS3DH_ADDR = 0x18;
+// static constexpr uint8_t LIS3DH_ADDR = 0x18; // Déjà déclarer dans configuration.h
 // Facteur de conversion pour la plage ±2g en mode Haute Résolution (12 bits)
 static constexpr float SENSITIVITY_2G = 1365.0f;
 // Intervalle de temps pour l'ODR 10 Hz
